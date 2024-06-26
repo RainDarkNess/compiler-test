@@ -66,11 +66,8 @@ int parser(char *code) {
             char *name = format_str[1];
             char *value = format_str[3];
             strcpy(vars[count_vars].name, name);
-            vars[count_vars].value = (int) *value;
+            vars[count_vars].value = atoi(value);
             count_vars++;
-//            printf("format = %s\n", format);
-//            printf("name = %s\n", name);
-//            printf("value = %s\n\n", value);
             free(*(tokens + i));
         }
     }
@@ -80,28 +77,55 @@ int parser(char *code) {
         if (strcmp(test[i], "@") != 0) {
 
             char **check = str_split(test[i], ' ');
-            printf("%s\n", check[1]);
-            if (strcmp(check[1], "=") != 0) {
-//                for(int j = 0; j < count_vars; j++){
-//                    char *res = strstr(check[0], vars[j].name);
-//                    printf("%s", res);
-//                }
-            }
+            for (int l = 0; *(check + l); l++) {
+                if ((strcmp(check[l], "+=") == 0)) {
+                    bool find = false;
+                    for (int j = 0; j < count_vars; j++) {
+                        if (strcmp(vars[j].name, check[l - 1]) == 0) {
+                            find = true;
 
+                            for (int y = 0; *(check + y); y++) {
+                                if (strcmp(check[y], "+") == 0) {
+                                    for (int o = 0; o < count_vars; o++) {
+                                        for (int k = 0; *(check + k); k++) {
+                                            if (strcmp(vars[j].name, check[k]) == 0) {
+                                                int tmp = 0;
+                                                *check[k] = snprintf(check[k], sizeof(check[k]), "%d", tmp);
+                                            }
+                                        }
+                                    }
+
+                                    vars[j].value += atoi(check[y - 1]) + atoi(check[y + 1]);
+                                    *check[y - 1] = '0';
+                                    *check[y + 1] = '0';
+                                    printf("\nThe integer value of %s is %d ", vars[j].name, vars[j].value);
+                                }
+                            }
+
+                            break;
+                        }
+                    }
+                    if (!find) {
+                        printf("\n%s", "'");
+                        printf("%s", check[l - 1]);
+                        printf("'not found in %d line", i);
+                    }
+                }
+            }
+        } else {
+            break;
         }
     }
-
-//    printf("%s\n", vars[0].name);
-//    printf("%s\n", vars[1].name);
     return 0;
 }
 
 int main() {
 
-    char code[] = "int x = 1;"
+    char code[] = "int x = 100;"
                   "int y = 2;"
                   "~"
-                  "x = x + y;"
+                  "x += 1 + 2 + x;"
+                  "y += x + x;"
                   "print(j);"
                   "@;"
                   "!";
