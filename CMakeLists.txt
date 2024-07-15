@@ -3,5 +3,4 @@ project(CTest C)
 
 set(CMAKE_C_STANDARD 23)
 
-add_executable(CTest main2.c
-        main.c)
+add_executable(CTest main.c)
