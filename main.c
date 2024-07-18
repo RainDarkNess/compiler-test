@@ -28,7 +28,7 @@ char words[4][1024][1024] = {{ // types
 
 char map[1024];
 
-char prohibited[] = {';', '=', '>', '<', '?', ':','\0'};
+char prohibited[] = {';', '=', '>', '<', '?', ':', '\0'};
 
 char file_view[] = {'%', 'd', ',', '%', 'd', ';'};
 
@@ -123,8 +123,11 @@ bool syntax_check(char _map[]) {
     char type_var[10];
     bool not_error = true;
     bool var_declaration = false;
+
+    char tmp_var_name[1024];
+
     for (int i = 0; *(tokens + i); i++) {
-        if(not_error) {
+        if (not_error) {
             char **delimited_str = str_split(tokens[i], ',');
             char *table_number = delimited_str[0];
 
@@ -137,11 +140,11 @@ bool syntax_check(char _map[]) {
             }
             if (var_declaration) {
 
-
                 if (syntax_lvl == 1) {
                     char *var_number = delimited_str[1];
                     if (strcmp(table_number, "3") == 0) {
                         printf("NAME VAR IS:%s\n", words[3][atoi(var_number)]);
+                        strcpy(tmp_var_name, words[3][atoi(var_number)]);
                         int pr_len = strlen(prohibited);
                         for (int j = 0; j < pr_len; j++) {
                             if (strchr(words[3][atoi(var_number)], prohibited[j]) != NULL) {
@@ -157,24 +160,31 @@ bool syntax_check(char _map[]) {
                     }
                 } else if (syntax_lvl == 2) {
                     char *var_val = delimited_str[1];
-                    if(strcmp(table_number, "1") == 0) {
+                    if (strcmp(table_number, "1") == 0) {
                         char *del = delimited_str[1];
-                        if((strcmp(words[1][atoi(del)], "=")==0)){
+                        if ((strcmp(words[1][atoi(del)], "=") == 0)) {
                             i++;
                             continue;
-                        }else{
+                        } else {
                             printf("Has not '='\n");
                             not_error = false;
                             break;
                         }
                     }
                     if (strcmp(table_number, "2") == 0) {
+                        if (strcmp(type_var, "int")==0) {
+                            if (isNumber(words[2][atoi(var_val)]) == 0){
+                                printf("type error in '%s'. '%s' not integer.\n", tmp_var_name, words[2][atoi(var_val)]);
+                                not_error = false;
+                                break;
+                            }
+                        }
                         printf("VALUE OF VAR IS:%s\n", words[2][atoi(var_val)]);
                         syntax_lvl = 2;
                         var_declaration = false;
-                    }else{
+                    } else {
                         printf("syntax error\n");
-                        printf("Value of '%s' not declared.\n", words[3][atoi(var_val)]);
+                        printf("unexpected token '%s'.\n", words[3][atoi(var_val)]);
                         not_error = false;
                         break;
                     }
@@ -213,9 +223,9 @@ void code_check_file_write(const char chars[300]) {
                     if (b) {
                         break;
                     } else {
-                        if (isNumber(tmp)) {
+                        if (isNumber(tmp) || tmp[0] == '"') {
                             strcpy(words[2][vars], tmp);
-                            printf("[%d][%d] Int: '%s' | tmp: %s \n", 2, vars, words[2][vars], tmp);
+                            printf("[%d][%d] Value: '%s' | tmp: %s \n", 2, vars, words[2][vars], tmp);
 
                             sprintf(tmp_str, file_view, 2, vars);
                             strncat(map, tmp_str, sizeof(map) - strlen(map) - 1);
@@ -260,9 +270,9 @@ void code_check_file_write(const char chars[300]) {
 
 int main() {
     char code[] = {
-            'i', 'n', 't', ' ', 'k','i','l','l', '=', '1', ';',
-            'c', 'h', 'a', 'r', ' ', 'm','y', '=', '2', ';',
-            'f', 'l', 'o', 'a', 't', ' ', 's','e','l','f', '=', '3', ';',
+            'i', 'n', 't', ' ', 'k', 'i', 'l', 'l', '=', '2',  ';',
+            'c', 'h', 'a', 'r', ' ', 'm', 'y', '=', '"', '2', '"', ';',
+            'f', 'l', 'o', 'a', 't', ' ', 's', 'e', 'l', 'f', '=', '3', ';',
             'i', 'n', 't', ' ', 'z', '=', '4', ';'
     };
 
