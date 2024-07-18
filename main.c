@@ -72,7 +72,7 @@ bool isNumber(char const* const text) {
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void code_check(const char chars[300]) {
+void code_check_file_write(const char chars[300]) {
     char tmp[100];
     char tmp_str[1024];
     memset(map, '\0', sizeof(map));
@@ -150,7 +150,7 @@ int main() {
     };
     int length = sizeof(code) / sizeof(code[0]);
 
-    code_check(code);
+    code_check_file_write(code);
 
     return 0;
 }
