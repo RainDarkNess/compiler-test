@@ -27,6 +27,8 @@ char words[4][1024][1024] = {{
 
 char map[1024];
 
+char file_view[] = {'[', '%','d',',','%', 'd',']',';'};
+
 // NOT MINE
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void file_write(const char *filepath, const char *data)
@@ -86,7 +88,7 @@ void code_check_file_write(const char chars[300]) {
                         if (strcmp(words[0][kk], tmp) == 0) {
                             printf("[%d][%d] Type: '%s' | tmp: %s \n", 0, kk, words[0][kk], tmp);
 
-                            sprintf(tmp_str, "[%d][%d];",  0, kk);
+                            sprintf(tmp_str, file_view,  0, kk);
                             strncat(map, tmp_str, sizeof(map) - strlen(map) - 1);
                             memset(tmp_str, '\0', sizeof(tmp_str));
 
@@ -101,7 +103,7 @@ void code_check_file_write(const char chars[300]) {
                             strcpy(words[2][vars], tmp);
                             printf("[%d][%d] Int: '%s' | tmp: %s \n", 2, vars, words[2][vars], tmp);
 
-                            sprintf(tmp_str, "[%d][%d];", 2, vars);
+                            sprintf(tmp_str, file_view, 2, vars);
                             strncat(map, tmp_str, sizeof(map) - strlen(map) - 1);
 
                             memset(tmp_str, '\0', sizeof(tmp_str));
@@ -111,7 +113,7 @@ void code_check_file_write(const char chars[300]) {
                             strcpy(words[3][vars], tmp);
                             printf("[%d][%d] Var: '%s' | tmp: %s \n", 3, vars, words[3][vars], tmp);
 
-                            sprintf(tmp_str, "[%d][%d];", 3, vars);
+                            sprintf(tmp_str, file_view, 3, vars);
                             strncat(map, tmp_str, sizeof(map) - strlen(map) - 1);
 
                             memset(tmp_str, '\0', sizeof(tmp_str));
@@ -123,7 +125,7 @@ void code_check_file_write(const char chars[300]) {
                 j = 0;
                 printf("[%d][%d] Delimiter: '%s' | tmp: %s \n", 1, del, words[1][del], tmp);
 
-                sprintf(tmp_str, "[%d][%d];", 1, del);
+                sprintf(tmp_str, file_view, 1, del);
                 strncat(map, tmp_str, sizeof(map) - strlen(map) - 1);
 
                 memset(tmp_str, '\0', sizeof(tmp_str));
