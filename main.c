@@ -4,6 +4,13 @@
 #include <stdlib.h>
 #include <assert.h>
 
+struct var {
+    char name[1024];
+    int value_int;
+    char value_str[1024];
+    float value_float;
+};
+
 int vars = 0;
 char words[4][1024][1024] = {{ // types
                                      {'c', 'h', 'a', 'r', '\0'},
@@ -31,6 +38,10 @@ char map[1024];
 char prohibited[] = {';', '=', '>', '<', '?', ':', '\0'};
 
 char file_view[] = {'%', 'd', ',', '%', 'd', ';'};
+
+struct var def_vars[1024];
+int vars_count = 0;
+int vars_count_replace = 0;
 
 // NOT MINE
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -123,11 +134,12 @@ bool syntax_check(char _map[]) {
     char type_var[10];
     bool not_error = true;
     bool var_declaration = false;
-
+    bool var_replacing = false;
     char tmp_var_name[1024];
 
     for (int i = 0; *(tokens + i); i++) {
         if (not_error) {
+
             char **delimited_str = str_split(tokens[i], ',');
             char *table_number = delimited_str[0];
 
@@ -145,6 +157,16 @@ bool syntax_check(char _map[]) {
                     if (strcmp(table_number, "3") == 0) {
                         printf("NAME VAR IS:%s\n", words[3][atoi(var_number)]);
                         strcpy(tmp_var_name, words[3][atoi(var_number)]);
+
+                        for (int name = 0; name < 1024; name++) {
+                            if (strcmp(def_vars[name].name, words[3][atoi(var_number)]) == 0) {
+                                vars_count_replace = vars_count;
+                                var_replacing = true;
+                                vars_count = name;
+                            }
+                        }
+                        strcpy(def_vars[vars_count].name, words[3][atoi(var_number)]);
+
                         int pr_len = strlen(prohibited);
                         for (int j = 0; j < pr_len; j++) {
                             if (strchr(words[3][atoi(var_number)], prohibited[j]) != NULL) {
@@ -172,25 +194,44 @@ bool syntax_check(char _map[]) {
                         }
                     }
                     if (strcmp(table_number, "2") == 0) {
-                        if (strcmp(type_var, "int")==0) {
-                            if (isNumber(words[2][atoi(var_val)]) == 0){
-                                printf("type error in '%s'. '%s' not integer.\n", tmp_var_name, words[2][atoi(var_val)]);
+                        if (strcmp(type_var, "int") == 0) {
+                            if (isNumber(words[2][atoi(var_val)]) == 0) {
+                                printf("type error in '%s'. '%s' not integer.\n", tmp_var_name,
+                                       words[2][atoi(var_val)]);
                                 not_error = false;
                                 break;
                             }
                         }
                         printf("VALUE OF VAR IS:%s\n", words[2][atoi(var_val)]);
-                        syntax_lvl = 2;
+                        def_vars[vars_count].value_int = atoi(words[2][atoi(var_val)]);
+                        vars_count++;
+                        syntax_lvl = 0;
                         var_declaration = false;
                     } else {
-                        printf("syntax error\n");
-                        printf("unexpected token '%s'.\n", words[3][atoi(var_val)]);
-                        not_error = false;
-                        break;
+                        bool var_not_pass = true;
+                        for (int var_i = 0; var_i < 1024; var_i++) {
+                            if (strcmp(def_vars[var_i].name, words[3][atoi(var_val)]) == 0) {
+                                printf("NEW VALUE OF VAR IS:%d\n", def_vars[var_i].value_int);
+                                def_vars[vars_count].value_int = def_vars[var_i].value_int;
+                                var_not_pass = false;
+                                var_declaration = false;
+                                vars_count++;
+                                syntax_lvl = 0;
+                            }
+                        }
+                        if (var_not_pass) {
+                            printf("unexpected token '%s'.\n", words[3][atoi(var_val)]);
+                            not_error = false;
+                            break;
+                        }
                     }
                 } else {
-                    printf("syntax error");
+                    printf("error\n");
                 }
+            }
+            if (var_replacing) {
+                vars_count = vars_count_replace;
+                var_replacing = false;
             }
         }
     }
@@ -270,10 +311,13 @@ void code_check_file_write(const char chars[300]) {
 
 int main() {
     char code[] = {
-            'i', 'n', 't', ' ', 'k', 'i', 'l', 'l', '=', '2',  ';',
+            'i', 'n', 't', ' ', 'k', 'i', 'l', 'l', '=', '1', ';',
             'c', 'h', 'a', 'r', ' ', 'm', 'y', '=', '"', '2', '"', ';',
             'f', 'l', 'o', 'a', 't', ' ', 's', 'e', 'l', 'f', '=', '3', ';',
-            'i', 'n', 't', ' ', 'z', '=', '4', ';'
+            'i', 'n', 't', ' ', 'k', 'i', 'l', 'l', '=', '2', ';',
+            'i', 'n', 't', ' ', 'z', '=', '9', ';',
+            'i', 'n', 't', ' ', 'y', '=', 'z', ';',
+            'i', 'n', 't', ' ', 'a', '=', 'y', ';',
     };
 
     code_check_file_write(code);
