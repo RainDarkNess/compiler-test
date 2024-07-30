@@ -22,11 +22,15 @@ char words[4][1024][1024] = {{ // types
                                      {';'},
                                      {'>'},
                                      {' '},
-                                     {'+'},
+                                     {'<'},
                                      {'b', 'e', 'g', 'i', 'n',},
                                      {'i','f'},
                                      {'('},
                                      {')'},
+                                     {'-'},
+                                     {'+'},
+                                     {'*'},
+                                     {'/'},
                              },
                              { // vars
                                      {112},
@@ -137,9 +141,12 @@ bool syntax_check(char _map[]) {
     char **tokens = str_split(_map, ';');
     int syntax_lvl = 0;
     char type_var[10];
+
     bool not_error = true;
     bool var_declaration = false;
     bool var_replacing = false;
+    bool work_space = false;
+
     char tmp_var_name[1024];
 
     for (int i = 0; *(tokens + i); i++) {
@@ -155,6 +162,13 @@ bool syntax_check(char _map[]) {
                 syntax_lvl = 1;
                 var_declaration = true;
             }
+
+            if(strcmp(table_number, "1") == 0 && strcmp(delimited_str[1], "5") == 0){
+                syntax_lvl = 3;
+                work_space = true;
+                printf("BEGIN detected\n");
+            }
+
             if (var_declaration) {
 
                 if (syntax_lvl == 1) {
@@ -183,7 +197,6 @@ bool syntax_check(char _map[]) {
                         }
                         syntax_lvl = 2;
                         i++;
-                        continue;
                     }
                 } else if (syntax_lvl == 2) {
                     char *var_val = delimited_str[1];
@@ -191,11 +204,9 @@ bool syntax_check(char _map[]) {
                         char *del = delimited_str[1];
                         if ((strcmp(words[1][atoi(del)], "=") == 0)) {
                             i++;
-                            continue;
                         } else {
                             printf("Has not '='\n");
-                            not_error = false;
-                            break;
+                            not_error = false; break;
                         }
                     }
                     if (strcmp(table_number, "2") == 0) {
@@ -238,6 +249,88 @@ bool syntax_check(char _map[]) {
                 vars_count = vars_count_replace;
                 var_replacing = false;
             }
+            if (work_space){
+                char *table_val = delimited_str[1];
+                if (syntax_lvl == 3) {
+                    if (strcmp(table_number, "3") == 0) {
+                        bool var_find = false;
+                        for (int j = 0; j <= 1024; j++) {
+                            if (strcmp(def_vars[j].name, words[3][atoi(table_val)]) == 0) {
+                                printf("FIND VAR %s\n", words[3][atoi(table_val)]);
+                                var_find = true;
+                                break;
+                            }
+                        }
+                        if (var_find) {
+                            syntax_lvl = 4;
+                            continue;
+                        } else {
+                            printf("unexpected token '%s'.\n", words[3][atoi(table_val)]);
+                            not_error = false;
+                            break;
+                        }
+                    }
+                }
+                if(syntax_lvl == 4){
+                    if (strcmp(table_number, "1") == 0) {
+                        table_val = delimited_str[1];
+                        printf("FIND DELIMITER %s\n", words[1][atoi(table_val)]);
+                        if (strcmp(table_val, "0") == 0){
+                            printf("EQUATING\n");
+                            syntax_lvl = 5;
+                            continue;
+                        }else if (strcmp(table_val, "1") == 0){
+                            syntax_lvl = 3;
+                            continue;
+                        }
+                    }else{
+                        printf("unexpected token '%s'.\n", words[atoi(table_number)][atoi(table_val)]);
+                        not_error = false;
+                        break;
+                    }
+                }
+                if(syntax_lvl == 5){
+                    table_val = delimited_str[1];
+
+                    if(strcmp(table_number, "3")==0){
+                        bool var_find = false;
+                        for (int j = 0; j < 1024; j++){
+                            if(strcmp(def_vars[j].name, words[3][atoi(table_val)]) == 0){
+                                printf("VAR %s FIND. VALUE IS %d\n", def_vars[j].name, def_vars[j].value_int);
+                                var_find = true;
+                            }
+                            if(var_find){
+                                syntax_lvl = 5;
+                                break;
+                            }
+                        }
+                        if(!var_find){
+                            printf("unexpected token '%s'.\n", words[atoi(table_number)][atoi(table_val)]);
+                            not_error = false;
+                            break;
+                        }
+                        continue;
+                    }
+                    if(strcmp(table_number, "2")==0){
+                        printf("FIND VALUE IS %s\n", words[atoi(table_number)][atoi(table_val)]);
+                        syntax_lvl = 5;
+                        continue;
+                    }
+
+                    if(strcmp(table_val, "9") == 0){
+                        printf("IS MINUS\n");
+                    }else if(strcmp(table_val, "10") == 0){
+                        printf("IS PLUS\n");
+                    }else if(strcmp(table_val, "11") == 0){
+                        printf("IS MULTIPLY\n");
+                    }else if(strcmp(table_val, "12") == 0){
+                        printf("IS DIV\n");
+                    }else{
+                        syntax_lvl = 3;
+                    }
+                    continue;
+                }
+            }
         }
     }
     return false;
@@ -254,7 +347,7 @@ void code_check_file_write(const char chars[300]) {
     bool is_del = false;
 
     for (int i = 0; *(chars + i); i++) {
-        for (int del = 0; del <= 8; del++) {
+        for (int del = 0; del <= 12; del++) {
             for (int sub_del = 0; *(words[1][del] + sub_del); sub_del++) {
 
                 if(chars[i] == words[1][del][0]){
@@ -276,6 +369,9 @@ void code_check_file_write(const char chars[300]) {
             if (delimiter_detected) {
                 bool b = false;
                 while (true) {
+                    if(strcmp("", tmp)==0){
+                        break;
+                    }
                     for (int kk = 0; kk < 1024; kk++) {
                         if (strcmp(words[0][kk], tmp) == 0) {
                             printf("[%d][%d] Type: '%s' | tmp: %s \n", 0, kk, words[0][kk], tmp);
@@ -349,8 +445,7 @@ int main() {
             'i', 'n', 't', ' ', 'y', '=', 'z', ';',
             'i', 'n', 't', ' ', 'a', '=', 'y', ';',
             'b', 'e', 'g', 'i', 'n',
-            'i','f',
-            'a', '=', 'z', '+', 'y', ';', '\0'
+            'y', '=', 'k', 'i', 'l', 'l', '+', 'y', ';', '\0'
     };
 
     code_check_file_write(code);
