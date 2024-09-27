@@ -142,7 +142,57 @@ bool isNumber(char const *const text) {
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+bool code_work(char _map[]){
+    int lvl = 0;
+    char **tokens = str_split(_map, ';');
+    bool start = false;
+    int tmp_value;
 
+    for (int i = 0; *(tokens + i); i++) {
+        char **delimited_str = str_split(tokens[i], ',');
+        char *table_number = delimited_str[0];
+        char *table_value  = delimited_str[1];
+        printf("%s\n", table_number);
+        if(strcmp(table_number, "1")==0 && strcmp(table_value, "5")==0){
+            start = true;
+            continue;
+        }
+        if(start){
+            table_value  = delimited_str[1];
+            if(lvl == 0) {
+                if (strcmp(table_number, "3") == 0) { // vars find
+                    tmp_value = atoi(table_value);
+                    lvl = 1; // var work
+                    continue;
+                }
+            }
+            if(lvl == 1){
+                table_value  = delimited_str[1];
+
+                if(strcmp(table_number, "1")==0 && strcmp(table_value, "0")==0){ // equaling
+                    lvl = 2;
+                    continue;
+                }
+            }
+            if(lvl == 2){
+                int value = 0;
+                bool var_find = false;
+                for(int j=0;j<1024;j++){
+                    if(strcmp(def_vars[j].name, words[3][tmp_value]) == 0){
+                        var_find = true;
+                        value = def_vars[j].value_int;
+                        break;
+                    }
+                }
+                if(var_find){
+                    printf("%d\n", value);
+                }
+            }
+
+        }
+    }
+    return false;
+}
 
 bool syntax_check(char _map[]) {
     char **tokens = str_split(_map, ';');
@@ -399,7 +449,7 @@ bool syntax_check(char _map[]) {
             }
         }
     }
-    return false;
+    return not_error;
 }
 
 void code_check_file_write(const char chars[300]) {
@@ -500,7 +550,10 @@ void code_check_file_write(const char chars[300]) {
 }
 
 file_write("C:\\Users\\rain\\CLionProjects\\CTest\\1.txt", map);
-syntax_check(map);
+bool syntax_next = syntax_check(map);
+    if(syntax_next){
+        code_work(map);
+    }
 }
 
 
