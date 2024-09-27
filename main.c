@@ -18,7 +18,7 @@ char words[4][1024][1024] = {{ // types
                                      {'f', 'l', 'o', 'a', 't', '\0'}
                              },
                              { // delimiters
-                                     {'='},
+                                     {'a', 's','s','i','g','n'},
                                      {';'},
                                      {'>'},
                                      {' '},
@@ -140,6 +140,22 @@ bool isNumber(char const *const text) {
     return (is_character_sign || first_character == '.') ||
            (first_character >= '0' && first_character <= '9');
 }
+
+void removeSpacesAndNewlines(char *str) {
+    char *result = str;
+    for (int i = 0; str[i] != '\0'; i++) {
+        if (!isspace((unsigned char)str[i])) {
+            *result = str[i];
+            result++;
+        }
+//        if (str[i] != '\n') {
+//            *result = str[i];
+//            result++;
+//        }
+    }
+    *result = '\0';
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 bool code_work(char _map[]){
@@ -454,22 +470,34 @@ bool syntax_check(char _map[]) {
 
 void code_check_file_write(const char chars[300]) {
     char tmp[100];
+    char tmp_type[100];
     char tmp_str[1024];
     memset(map, '\0', sizeof(map));
     memset(tmp, '\0', sizeof(tmp));
+    memset(tmp_type, '\0', sizeof(tmp));
     int j = 0;
+    int type_index = 0;
 
     bool delimiter_detected = false;
     bool is_del = false;
+    bool type_declaration = true;
     int tmp_del = 0;
-
+    bool not_type = true;
     for (int i = 0; *(chars + i); i++) {
         for (int del = 0; del <= 17; del++) {
             for (int sub_del = 0; *(words[1][del] + sub_del); sub_del++) {
 
                 if(chars[i] == words[1][del][0]){
-                    is_del = true;
+                    for(int sub_del_chk = 0; *(words[1][del] + sub_del_chk); sub_del_chk++ ){
+                        if(chars[i+sub_del_chk] == words[1][del][sub_del_chk]){
+                            is_del = true;
+                        }else{
+                            is_del = false;
+                            break;
+                        }
+                    }
                 }
+
                 if (chars[i] == words[1][del][sub_del] && is_del) {
                     if (words[1][del][sub_del + 1] == '\0' && !delimiter_detected) {
                         delimiter_detected = true;
@@ -488,24 +516,26 @@ void code_check_file_write(const char chars[300]) {
             if (delimiter_detected) {
                 bool b = false;
                 while (true) {
-                    if(strcmp("", tmp)==0){
+                    if(strcmp("", tmp_type)==0){
                         break;
                     }
-                    for (int kk = 0; kk < 1024; kk++) {
-                        if (strcmp(words[0][kk], tmp) == 0) {
-                            printf("[%d][%d] Type: '%s' | tmp: %s \n", 0, kk, words[0][kk], tmp);
+                    if(!type_declaration) {
+                        for (int kk = 0; kk < 1024; kk++) {
+                            if (strcmp(words[0][kk], tmp_type) == 0) {
+                                printf("[%d][%d] Type: '%s' | tmp: %s \n", 0, kk, words[0][kk], tmp_type);
 
-                            sprintf(tmp_str, file_view, 0, kk);
-                            strncat(map, tmp_str, sizeof(map) - strlen(map) - 1);
-                            memset(tmp_str, '\0', sizeof(tmp_str));
+                                sprintf(tmp_str, file_view, 0, kk);
+                                strncat(map, tmp_str, sizeof(map) - strlen(map) - 1);
+                                memset(tmp_str, '\0', sizeof(tmp_str));
 
-                            b = true;
-                            break;
+                                b = true;
+    //                            break;
+                            }
                         }
                     }
-                    if (b) {
-                        break;
-                    } else {
+//                    if (b) {
+//                        break;
+//                    } else {
                         if (isNumber(tmp) || tmp[0] == '"') {
                             strcpy(words[2][vars], tmp);
                             printf("[%d][%d] Value: '%s' | tmp: %s \n", 2, vars, words[2][vars], tmp);
@@ -527,7 +557,7 @@ void code_check_file_write(const char chars[300]) {
                             memset(tmp_str, '\0', sizeof(tmp_str));
                         }
 
-                    }
+//                    }
                     break;
                 }
                 j = 0;
@@ -541,12 +571,42 @@ void code_check_file_write(const char chars[300]) {
                 memset(tmp, '\0', sizeof(tmp));
                 delimiter_detected = false;
                 is_del = false;
+                type_declaration = true;
                 break;
+            }
+        }
+    }
+    if(type_declaration) {
+        for (int type = 0; type < 3; type++) {
+            int size_type = 0;
+            if (chars[i] == words[0][type][0]) {
+                type_index = 0;
+                memset(tmp_type, '\0', sizeof(tmp_type));
+
+                int type_size = (int) strlen(words[0][type]);
+                for (int sub_del_chk = 0; *(words[0][type] + sub_del_chk); sub_del_chk++) {
+                    if (chars[i + sub_del_chk] == words[0][type][sub_del_chk]) {
+                        tmp_type[type_index] = chars[i + sub_del_chk];
+                        size_type = sub_del_chk + 1;
+                        type_index++;
+                    } else {
+                        if (type_size > type_index) {
+                            memset(tmp_type, '\0', sizeof(tmp_type));
+                            type_index = 0;
+                            i -= sub_del_chk;
+                        }
+                        type_index = 0;
+                        break;
+                    }
+                }
+                type_declaration = false;
+                i += size_type;
             }
         }
     }
     tmp[j] = chars[i];
     j++;
+
 }
 
 file_write("C:\\Users\\rain\\CLionProjects\\CTest\\1.txt", map);
@@ -558,23 +618,21 @@ bool syntax_next = syntax_check(map);
 
 
 int main() {
-    char code[] = {
-            'i', 'n', 't', ' ', 'k', 'i', 'l', 'l', '=', '1', ';',
-            'c', 'h', 'a', 'r', ' ', 'm', 'y', '=', '"', '2', '"', ';',
-            'f', 'l', 'o', 'a', 't', ' ', 's', 'e', 'l', 'f', '=', '3', ';',
-            'i', 'n', 't', ' ', 'k', 'i', 'l', 'l', '=', '2', ';',
-            'i', 'n', 't', ' ', 'z', '=', '5', ';',
-            'i', 'n', 't', ' ', 'y', '=', 'z', ';',
-            'i', 'n', 't', ' ', 'a', '=', 'y', ';',
-            'b', 'e', 'g', 'i', 'n',
-            'i','f','(','y','>','z',')','{',
-            'y', '=', 'k', 'i', 'l', 'l', '+', 'y', ';',
-            '}',
-            'z', '=', 'y', '*', 'y', '+', 'z','-', 'y',';',
-            'y','+','+', ';',
-            'p','r','i','n','t','(','z',')',';','\0'
-    };
-
+    char code[] = "int kill assign 1;\n"
+                  "char my assign \"2\";\n"
+                  "float self assign 3;\n"
+                  "int kill assign 2;\n"
+                  "int z assign 88;\n"
+                  "int y assign z;\n"
+                  "int a assign y;\n"
+                  "begin\n"
+                  "if(y>z){\n"
+                  "yassignkill+y;\n"
+                  "}\n"
+                  "zassigny*y+z-y;\n"
+                  "y++;\n"
+                  "print(z);\\0";
+    removeSpacesAndNewlines(code);
     code_check_file_write(code);
 
     return 0;
