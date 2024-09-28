@@ -13,31 +13,34 @@ struct var {
 
 int vars = 0;
 char words[4][1024][1024] = {{ // types
-                                     {'c', 'h', 'a', 'r', '\0'},
-                                     {'i', 'n', 't', '\0'},
-                                     {'f', 'l', 'o', 'a', 't', '\0'}
+                                     {"char"},
+                                     {"int"},
+                                     {"float"}
                              },
                              { // delimiters
-                                     {'a', 's','s','i','g','n'},
-                                     {';'},
-                                     {'>'},
-                                     {' '},
-                                     {'<'},
-                                     {'b', 'e', 'g', 'i', 'n',},
-                                     {'i','f'},
-                                     {'('},
-                                     {')'},
-                                     {'-','-'},
-                                     {'-'},
-                                     {'+','+'},
-                                     {'+'},
-                                     {'*'},
-                                     {'/'},
-                                     {'{'},
-                                     {'}'},
-                                     {'p','r','i','n','t',},
+                                     {"assign"}, // 0
+                                     {';'}, // 1
+                                     {'>'}, // 2
+                                     {' '}, // 3
+                                     {'<'}, // 4
+                                     {"begin"}, // 5
+                                     {"if"}, // 6
+                                     {'('}, // 7
+                                     {')'}, // 8
+                                     {'-','-'}, // 9
+                                     {'-'}, // 10
+                                     {'+','+'}, // 11
+                                     {'+'}, // 12
+                                     {'*'}, // 13
+                                     {'/'}, // 14
+                                     {"then"}, // 15
+                                     {"end"}, // 16
+                                     {"print"}, // 17
+                                     {"for"}, // 18
+                                     {"val"}, // 19
+                                     {"do"} // 20
                              },
-                             { // vars
+                             { // vars values
                                      {112},
 
                              },
@@ -279,7 +282,7 @@ bool syntax_check(char _map[]) {
                         if ((strcmp(words[1][atoi(del)], "=") == 0)) {
                             i++;
                         } else {
-                            printf("Has not '='\n");
+                            printf("Has not 'assign'\n");
                             not_error = false; break;
                         }
                     }
@@ -326,15 +329,22 @@ bool syntax_check(char _map[]) {
             if (work_space){
                 char *table_val = delimited_str[1];
                 if (syntax_lvl == 3) { // ENTER AFTER BEGIN
-                    if(strcmp(table_val, "16")==0 && strcmp(table_number, "1")==0){
-                        printf("FIND '}'. IF END.\n");
+                    if(strcmp(table_val, "16")==0 && strcmp(table_number, "1")==0 && is_if){
+                        printf("FIND 'END'. IF END.\n");
                         is_if = false;
                     }
-                    if (strcmp(table_number, "1") == 0){
+                    if (strcmp(table_number, "1") == 0){ // Finding if
                         table_val = delimited_str[1];
                         if(strcmp(table_val, "6") == 0){
-                            syntax_lvl = 6;
+//                            syntax_lvl = 6;
+                            syntax_lvl = 7;
                             printf("IF FIND\n");
+                            is_if = true;
+                            continue;
+                        }else if(strcmp(table_val, "18") == 0){ // Finding for
+                            syntax_lvl = 8;
+                            printf("FOR FIND\n");
+                            is_if = true;
                             continue;
                         }else{
                             printf("DELIMITER FIND '%s'\n", words[1][atoi(table_val)]);
@@ -368,7 +378,8 @@ bool syntax_check(char _map[]) {
                             printf("EQUATING\n");
                             syntax_lvl = 5;
                         }else if (strcmp(table_val, "6") == 0) { // if
-                            syntax_lvl = 6;
+//                            syntax_lvl = 6;
+                            syntax_lvl = 7;
                         }else if (strcmp(table_val, "1") == 0){ // ;
                             syntax_lvl = 3;
                         }
@@ -382,7 +393,7 @@ bool syntax_check(char _map[]) {
                 if(syntax_lvl == 5){ // EQUALING
                     table_val = delimited_str[1];
 
-                    if(strcmp(table_number, "3")==0){
+                    if(strcmp(table_number, "3")==0){ // Var check
                         bool var_find = false;
                         for (int j = 0; j < 1024; j++){
                             if(strcmp(def_vars[j].name, words[3][atoi(table_val)]) == 0){
@@ -401,7 +412,7 @@ bool syntax_check(char _map[]) {
                         }
                         continue;
                     }
-                    if(strcmp(table_number, "2")==0){
+                    if(strcmp(table_number, "2")==0){ // Var value check
                         printf("FIND VALUE IS %s\n", words[atoi(table_number)][atoi(table_val)]);
                         syntax_lvl = 5;
                         continue;
@@ -420,10 +431,10 @@ bool syntax_check(char _map[]) {
                     }
                     continue;
                 }
-                if(syntax_lvl == 6){ // ENTER IF
+                if(syntax_lvl == 6){ // ENTER IF...OLD VERSION FOR {}: NOT USED
                     table_val = delimited_str[1];
                     if(strcmp(table_val, "7")==0){
-                        printf("FIND '('\n");
+                        printf("FIND ENTER IF\n");
                         syntax_lvl = 7;
                         continue;
                     }else{
@@ -451,17 +462,88 @@ bool syntax_check(char _map[]) {
                             break;
                         }
                     }
-                    if(strcmp(table_val, "2") == 0){
+                    if(strcmp(table_val, "2") == 0){ // condition in if
                         printf("FIND '>'\n");
                     }else if(strcmp(table_val, "4") == 0){
                         printf("FIND '<'\n");
                     }else if(strcmp(table_val, "15") == 0){
-                        printf("FIND '{'. IF STARTED.\n");
+                        printf("FIND 'Then'. IF STARTED.\n");
                         syntax_lvl = 3;
                         is_if = true;
                     }
                     continue;
                 }
+
+                if(syntax_lvl == 8){ // FOR
+                    table_val = delimited_str[1];
+                    if(strcmp(table_number, "3")==0){
+                        bool var_find = false;
+                        for (int j = 0; j < 1024; j++){
+                            if(strcmp(def_vars[j].name, words[3][atoi(table_val)]) == 0){
+                                printf("VAR %s FIND. VALUE IS %d\n", def_vars[j].name, def_vars[j].value_int);
+                                var_find = true;
+                            }
+                            if(var_find){
+                                break;
+                            }
+                        }
+                        if(!var_find){
+                            printf("VAR NOT FOUND '%s'.\n", words[atoi(table_number)][atoi(table_val)]);
+                            strcpy(def_vars[vars_count].name, words[atoi(table_number)][atoi(table_val)]);
+                            syntax_lvl = 9;
+//                            not_error = false;
+//                            break;
+                        }
+                    }
+                    if(strcmp(table_val, "2") == 0){ // condition in if
+                        printf("FIND '>'\n");
+                    }else if(strcmp(table_val, "4") == 0){
+                        printf("FIND '<'\n");
+                    }else if(strcmp(table_val, "15") == 0){
+                        printf("FIND 'Then'. IF STARTED.\n");
+                        syntax_lvl = 3;
+                        is_if = true;
+                    }
+                    continue;
+                }
+
+                if(syntax_lvl == 9){ // do assign for value in "for"
+                    if((strcmp(table_number, "1")==0) && (strcmp(table_val, "0")==0)){
+                        printf("ASSIGN FIND IN FOR\n");
+                        continue;
+                    }else if((strcmp(table_number, "2")==0)){
+                        printf("VALUE FOUND '%s'.\n", words[atoi(table_number)][atoi(table_val)]);
+                        def_vars[vars_count].value_int = atoi(words[2][atoi(table_val)]);
+                        vars_count++;
+                        syntax_lvl = 8;
+                        continue;
+                    }else if((strcmp(table_number, "3")==0)){
+                        bool var_find = false;
+                        for (int j = 0; j < 1024; j++){
+                            if(strcmp(def_vars[j].name, words[3][atoi(table_val)]) == 0){
+                                printf("VAR %s FIND. VALUE IS %d\n", def_vars[j].name, def_vars[j].value_int);
+                                def_vars[vars_count].value_int = def_vars[j].value_int;
+                                printf("VAR %s IN FOR HAS NEW VAL IS %d\n", def_vars[vars_count].name, def_vars[vars_count].value_int);
+                                var_find = true;
+                                break;
+                            }
+                        }
+                        if(var_find){
+                            vars_count++;
+                            syntax_lvl = 8;
+                        }else{
+                            printf("unexpected token '%s'.\n", words[atoi(table_number)][atoi(table_val)]);
+                            not_error = false;
+                            break;
+                        }
+                        continue;
+                    }else{
+                        printf("unexpected token '%s'.\n", words[atoi(table_number)][atoi(table_val)]);
+                        not_error = false;
+                        break;
+                    }
+                }
+
             }
         }
     }
@@ -484,7 +566,8 @@ void code_check_file_write(const char chars[300]) {
     int tmp_del = 0;
     bool not_type = true;
     for (int i = 0; *(chars + i); i++) {
-        for (int del = 0; del <= 17; del++) {
+        int a = sizeof(*words[1]);
+        for (int del = 0; del <= 20; del++) {
             for (int sub_del = 0; *(words[1][del] + sub_del); sub_del++) {
 
                 if(chars[i] == words[1][del][0]){
@@ -517,9 +600,13 @@ void code_check_file_write(const char chars[300]) {
                 bool b = false;
                 while (true) {
                     if(strcmp("", tmp_type)==0){
+//                        break;
+                    }
+                    if(strcmp("", tmp)==0){
                         break;
                     }
-                    if(!type_declaration) {
+
+                    if(!type_declaration && (strcmp("", tmp_type)!=0)) {
                         for (int kk = 0; kk < 1024; kk++) {
                             if (strcmp(words[0][kk], tmp_type) == 0) {
                                 printf("[%d][%d] Type: '%s' | tmp: %s \n", 0, kk, words[0][kk], tmp_type);
@@ -527,15 +614,9 @@ void code_check_file_write(const char chars[300]) {
                                 sprintf(tmp_str, file_view, 0, kk);
                                 strncat(map, tmp_str, sizeof(map) - strlen(map) - 1);
                                 memset(tmp_str, '\0', sizeof(tmp_str));
-
-                                b = true;
-    //                            break;
                             }
                         }
                     }
-//                    if (b) {
-//                        break;
-//                    } else {
                         if (isNumber(tmp) || tmp[0] == '"') {
                             strcpy(words[2][vars], tmp);
                             printf("[%d][%d] Value: '%s' | tmp: %s \n", 2, vars, words[2][vars], tmp);
@@ -557,7 +638,6 @@ void code_check_file_write(const char chars[300]) {
                             memset(tmp_str, '\0', sizeof(tmp_str));
                         }
 
-//                    }
                     break;
                 }
                 j = 0;
@@ -618,7 +698,8 @@ bool syntax_next = syntax_check(map);
 
 
 int main() {
-    char code[] = "int kill assign 1;\n"
+    char code[] =
+                  "int kill assign 1;\n"
                   "char my assign \"2\";\n"
                   "float self assign 3;\n"
                   "int kill assign 2;\n"
@@ -626,12 +707,14 @@ int main() {
                   "int y assign z;\n"
                   "int a assign y;\n"
                   "begin\n"
-                  "if(y>z){\n"
-                  "yassignkill+y;\n"
-                  "}\n"
-                  "zassigny*y+z-y;\n"
-                  "y++;\n"
-                  "print(z);\\0";
+                  "if y>z then\n"
+                  "y assign kill+y;\n"
+                  "z assign y*y+z-y;\n"
+                  "end;\n"
+                  "for i assign z val 10 do y assign z\n"
+//                  "y++;\n"
+//                  "print(z);"
+                  "\\0";
     removeSpacesAndNewlines(code);
     code_check_file_write(code);
 
