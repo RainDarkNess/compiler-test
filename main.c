@@ -223,7 +223,7 @@ bool syntax_check(char _map[]) {
     bool var_replacing = false;
     bool work_space = false;
     bool is_if = false;
-
+    bool has_next_token = false;
     char tmp_var_name[1024];
 
     for (int i = 0; *(tokens + i); i++) {
@@ -495,6 +495,24 @@ bool syntax_check(char _map[]) {
 //                            break;
                         }
                     }
+                    else if(strcmp(table_number, "1")==0 && strcmp(table_val, "19")==0){
+                        printf("WORD VAL FOUND\n");
+                        has_next_token = true;
+                        continue;
+                    }
+                    else if(strcmp(table_number, "2")==0 && has_next_token){
+                        printf("VAL '%s' FOUND.\n", words[atoi(table_number)][atoi(table_val)]);
+                        has_next_token = true;
+                        continue;
+                    }
+                    else if(strcmp(table_number, "1")==0 && strcmp(table_val, "20")==0 && has_next_token){
+                        printf("DO FOUND\n");
+                        syntax_lvl = 3;
+                    }else{
+                        printf("unexpected token '%s'.\n", words[atoi(table_number)][atoi(table_val)]);
+                        not_error = false;
+                        break;
+                    }
                     if(strcmp(table_val, "2") == 0){ // condition in if
                         printf("FIND '>'\n");
                     }else if(strcmp(table_val, "4") == 0){
@@ -711,7 +729,7 @@ int main() {
                   "y assign kill+y;\n"
                   "z assign y*y+z-y;\n"
                   "end;\n"
-                  "for i assign z val 10 do y assign z\n"
+                  "for i assign z val 10 do y assign 10 + z;\n"
 //                  "y++;\n"
 //                  "print(z);"
                   "\\0";
