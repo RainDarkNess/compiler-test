@@ -15,11 +15,12 @@ int vars = 0;
 char words[4][1024][1024] = {{ // types
                                      {"char"},
                                      {"int"},
-                                     {"float"}
+                                     {"float"},
+                                     {"bool"},
                              },
                              { // delimiters
                                      {"assign"}, // 0
-                                     {';'}, // 1
+                                     {";"}, // 1
                                      {'>'}, // 2
                                      {' '}, // 3
                                      {'<'}, // 4
@@ -28,9 +29,9 @@ char words[4][1024][1024] = {{ // types
                                      {'('}, // 7
                                      {')'}, // 8
                                      {'-','-'}, // 9
-                                     {'-'}, // 10
+                                     {"disa"}, // 10
                                      {'+','+'}, // 11
-                                     {'+'}, // 12
+                                     {"add"}, // 12
                                      {'*'}, // 13
                                      {'/'}, // 14
                                      {"then"}, // 15
@@ -38,7 +39,12 @@ char words[4][1024][1024] = {{ // types
                                      {"print"}, // 17
                                      {"for"}, // 18
                                      {"val"}, // 19
-                                     {"do"} // 20
+                                     {"do"}, // 20
+                                     {"while"}, // 21
+                                     {"next"}, // 22
+                                     {":"}, // 23
+                                     {"program"}, // 24
+                                     {"var"}, // 25
                              },
                              { // vars values
                                      {112},
@@ -224,6 +230,7 @@ bool syntax_check(char _map[]) {
     bool work_space = false;
     bool is_if = false;
     bool has_next_token = false;
+//    bool
     char tmp_var_name[1024];
 
     for (int i = 0; *(tokens + i); i++) {
@@ -341,7 +348,7 @@ bool syntax_check(char _map[]) {
                             printf("IF FIND\n");
                             is_if = true;
                             continue;
-                        }else if(strcmp(table_val, "18") == 0){ // Finding for
+                        }else if(strcmp(table_val, "18") == 0 || strcmp(table_val, "21") == 0){ // Finding for and while
                             syntax_lvl = 8;
                             printf("FOR FIND\n");
                             is_if = true;
@@ -474,7 +481,7 @@ bool syntax_check(char _map[]) {
                     continue;
                 }
 
-                if(syntax_lvl == 8){ // FOR
+                if(syntax_lvl == 8){ // FOR AND WHILE
                     table_val = delimited_str[1];
                     if(strcmp(table_number, "3")==0){
                         bool var_find = false;
@@ -572,138 +579,139 @@ void code_check_file_write(const char chars[300]) {
     char tmp[100];
     char tmp_type[100];
     char tmp_str[1024];
+    char tmp_del[1024];
     memset(map, '\0', sizeof(map));
     memset(tmp, '\0', sizeof(tmp));
     memset(tmp_type, '\0', sizeof(tmp));
+    memset(tmp_del, '\0', sizeof(tmp_del));
     int j = 0;
     int type_index = 0;
 
-    bool delimiter_detected = false;
     bool is_del = false;
     bool type_declaration = true;
-    int tmp_del = 0;
+    int del_outer = 0;
+    bool was_del = true;
     bool not_type = true;
     for (int i = 0; *(chars + i); i++) {
-        int a = sizeof(*words[1]);
-        for (int del = 0; del <= 20; del++) {
-            for (int sub_del = 0; *(words[1][del] + sub_del); sub_del++) {
 
-                if(chars[i] == words[1][del][0]){
-                    for(int sub_del_chk = 0; *(words[1][del] + sub_del_chk); sub_del_chk++ ){
-                        if(chars[i+sub_del_chk] == words[1][del][sub_del_chk]){
-                            is_del = true;
-                        }else{
-                            is_del = false;
+        for (int del = 0; del <= 25; del++) {
+            if(chars[i] == words[1][del][0]){
+                for(int sub_del_chk = 0; *(words[1][del] + sub_del_chk); sub_del_chk++ ){
+                    if(chars[i+sub_del_chk] == words[1][del][sub_del_chk]){
+                        is_del = true;
+                        tmp_del[sub_del_chk] = chars[i+sub_del_chk];
+                        del_outer = del;
+                    }else{
+                        is_del = false;
+                        memset(tmp_del, '\0', sizeof(tmp_del));
+                        del_outer = 0;
+                        was_del = false;
+                    }
+                }
+            }
+        }
+        if(!type_declaration && (strcmp("", tmp_type)!=0)) {
+            for (int kk = 0; kk < 1024; kk++) {
+                if (strcmp(words[0][kk], tmp_type) == 0) {
+//                    i += (int) strlen(tmp_type)-1;
+                    printf("[%d][%d] Type: '%s' | tmp: %s \n", 0, kk, words[0][kk], tmp_type);
+                    sprintf(tmp_str, file_view, 0, kk);
+                    strncat(map, tmp_str, sizeof(map) - strlen(map) - 1);
+                    memset(tmp_str, '\0', sizeof(tmp_str));
+                    type_declaration = true;
+                    memset(tmp, '\0', sizeof(tmp));
+                }
+            }
+        }
+
+        if(type_declaration) {
+            for (int type = 0; type < 3; type++) {
+                int size_type = 0;
+                if (chars[i] == words[0][type][0]) {
+                    type_index = 0;
+                    memset(tmp_type, '\0', sizeof(tmp_type));
+
+                    int type_size = (int) strlen(words[0][type]);
+                    for (int sub_del_chk = 0; *(words[0][type] + sub_del_chk); sub_del_chk++) {
+                        if (chars[i + sub_del_chk] == words[0][type][sub_del_chk]) {
+                            tmp_type[type_index] = chars[i + sub_del_chk];
+                            size_type = sub_del_chk + 1;
+                            type_index++;
+                            not_type = false;
+                        } else {
+                            if (type_size > type_index) {
+                                memset(tmp_type, '\0', sizeof(tmp_type));
+                                type_index = 0;
+                                i -= sub_del_chk;
+                            }
+                            type_index = 0;
+                            not_type = true;
                             break;
                         }
                     }
+                    type_declaration = false;
+//                    i+=size_type;
                 }
-
-                if (chars[i] == words[1][del][sub_del] && is_del) {
-                    if (words[1][del][sub_del + 1] == '\0' && !delimiter_detected) {
-                        delimiter_detected = true;
-                        i++;
-                        tmp_del = del;
-                        del = 0;
-                    }else{
-                        delimiter_detected = false;
-                        i++;
-                    }
-                }else if(chars[i] != words[1][del][sub_del] && is_del){
-                    i = i - (int) strlen(words[1][del])+1;
-                    is_del = false;
-                }
-
-            if (delimiter_detected) {
-                bool b = false;
-                while (true) {
-                    if(strcmp("", tmp_type)==0){
-//                        break;
-                    }
-                    if(strcmp("", tmp)==0){
-                        break;
-                    }
-
-                    if(!type_declaration && (strcmp("", tmp_type)!=0)) {
-                        for (int kk = 0; kk < 1024; kk++) {
-                            if (strcmp(words[0][kk], tmp_type) == 0) {
-                                printf("[%d][%d] Type: '%s' | tmp: %s \n", 0, kk, words[0][kk], tmp_type);
-
-                                sprintf(tmp_str, file_view, 0, kk);
-                                strncat(map, tmp_str, sizeof(map) - strlen(map) - 1);
-                                memset(tmp_str, '\0', sizeof(tmp_str));
-                            }
-                        }
-                    }
-                        if (isNumber(tmp) || tmp[0] == '"') {
-                            strcpy(words[2][vars], tmp);
-                            printf("[%d][%d] Value: '%s' | tmp: %s \n", 2, vars, words[2][vars], tmp);
-
-                            sprintf(tmp_str, file_view, 2, vars);
-                            strncat(map, tmp_str, sizeof(map) - strlen(map) - 1);
-
-                            memset(tmp_str, '\0', sizeof(tmp_str));
-
-                            vars++;
-                        } else {
-                            strcpy(words[3][vars], tmp);
-                            printf("[%d][%d] Var: '%s' | tmp: %s \n", 3, vars, words[3][vars], tmp);
-
-                            sprintf(tmp_str, file_view, 3, vars);
-                            strncat(map, tmp_str, sizeof(map) - strlen(map) - 1);
-                            vars++;
-
-                            memset(tmp_str, '\0', sizeof(tmp_str));
-                        }
-
-                    break;
-                }
-                j = 0;
-                printf("[%d][%d] Delimiter: '%s' | tmp: %s \n", 1, tmp_del, words[1][tmp_del], tmp);
-
-                sprintf(tmp_str, file_view, 1, tmp_del);
-                strncat(map, tmp_str, sizeof(map) - strlen(map) - 1);
-
-                memset(tmp_str, '\0', sizeof(tmp_str));
-
-                memset(tmp, '\0', sizeof(tmp));
-                delimiter_detected = false;
-                is_del = false;
-                type_declaration = true;
-                break;
             }
         }
-    }
-    if(type_declaration) {
-        for (int type = 0; type < 3; type++) {
-            int size_type = 0;
-            if (chars[i] == words[0][type][0]) {
-                type_index = 0;
-                memset(tmp_type, '\0', sizeof(tmp_type));
 
-                int type_size = (int) strlen(words[0][type]);
-                for (int sub_del_chk = 0; *(words[0][type] + sub_del_chk); sub_del_chk++) {
-                    if (chars[i + sub_del_chk] == words[0][type][sub_del_chk]) {
-                        tmp_type[type_index] = chars[i + sub_del_chk];
-                        size_type = sub_del_chk + 1;
-                        type_index++;
-                    } else {
-                        if (type_size > type_index) {
-                            memset(tmp_type, '\0', sizeof(tmp_type));
-                            type_index = 0;
-                            i -= sub_del_chk;
-                        }
-                        type_index = 0;
-                        break;
-                    }
-                }
-                type_declaration = false;
-                i += size_type;
-            }
+//        if(!is_del && not_type) {
+//            tmp[j] = chars[i];
+//            printf("%c",tmp[j]);
+//            j++;
+//        }
+        if (is_del) {
+            j = 0;
+//            i+= (int)strlen(tmp_del)-1;
+            printf("[%d][%d] Delimiter: '%s' | tmp: %s \n", 1, del_outer, tmp_del, tmp);
+
+            sprintf(tmp_str, file_view, 1, del_outer);
+            strncat(map, tmp_str, sizeof(map) - strlen(map) - 1);
+
+            memset(tmp_str, '\0', sizeof(tmp_str));
+
+            memset(tmp_del, '\0', sizeof(tmp_del));
+
+            memset(tmp, '\0', sizeof(tmp));
+
+            is_del = false;
+            type_declaration = true;
+//            break;
         }
-    }
-    tmp[j] = chars[i];
-    j++;
+
+
+//        if(type_declaration && (strcmp("", tmp_type)!=0) && !is_del){
+//
+//        }
+//            while (true) {
+//            else{
+//                if(strcmp("", tmp)==0){
+//                    break;
+//                }
+//
+
+//                if (isNumber(tmp) || tmp[0] == '"') {
+//                    strcpy(words[2][vars], tmp);
+//                    printf("[%d][%d] Value: '%s' | tmp: %s \n", 2, vars, words[2][vars], tmp);
+//
+//                    sprintf(tmp_str, file_view, 2, vars);
+//                    strncat(map, tmp_str, sizeof(map) - strlen(map) - 1);
+//
+//                    memset(tmp_str, '\0', sizeof(tmp_str));
+//
+//                    vars++;
+//                } else {
+//                    strcpy(words[3][vars], tmp);
+//                    printf("[%d][%d] Var: '%s' | tmp: %s \n", 3, vars, words[3][vars], tmp);
+//
+//                    sprintf(tmp_str, file_view, 3, vars);
+//                    strncat(map, tmp_str, sizeof(map) - strlen(map) - 1);
+//                    vars++;
+//
+//                    memset(tmp_str, '\0', sizeof(tmp_str));
+//                }
+//
+//            }
 
 }
 
@@ -717,19 +725,24 @@ bool syntax_next = syntax_check(map);
 
 int main() {
     char code[] =
-                  "int kill assign 1;\n"
-                  "char my assign \"2\";\n"
-                  "float self assign 3;\n"
-                  "int kill assign 2;\n"
-                  "int z assign 88;\n"
-                  "int y assign z;\n"
-                  "int a assign y;\n"
+                  "program var\n"
+                  "uuuy:int;\n"
+//                  "char my assign \"2\";\n"
+                  "self:float;\n"
+                  "kill1:int;\n"
+                  "kill2:int;\n"
+
+//                  "int kill assign 2;\n"
+//                  "z:int\n"
+//                  "y:int\n"
+//                  "a:int\n"
                   "begin\n"
                   "if y>z then\n"
-                  "y assign kill+y;\n"
-                  "z assign y*y+z-y;\n"
-                  "end;\n"
-                  "for i assign z val 10 do y assign 10 + z;\n"
+                  ";y assign kill add y\n"
+                  ";z assign y*y add z disa y\n"
+                  "end\n"
+                  //"for i assign z val 10 do y assign 10 add z;\n"
+                  //"while z val 10 do y assign 10 add z next;\n"
 //                  "y++;\n"
 //                  "print(z);"
                   "\\0";
