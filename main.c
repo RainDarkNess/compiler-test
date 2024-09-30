@@ -15,11 +15,12 @@ int vars = 0;
 char words[4][1024][1024] = {{ // types
                                      {"char"},
                                      {"int"},
-                                     {"float"}
+                                     {"float"},
+                                     {"bool"},
                              },
                              { // delimiters
                                      {"assign"}, // 0
-                                     {';'}, // 1
+                                     {";"}, // 1
                                      {'>'}, // 2
                                      {' '}, // 3
                                      {'<'}, // 4
@@ -28,9 +29,9 @@ char words[4][1024][1024] = {{ // types
                                      {'('}, // 7
                                      {')'}, // 8
                                      {'-','-'}, // 9
-                                     {'-'}, // 10
+                                     {"disa"}, // 10
                                      {'+','+'}, // 11
-                                     {'+'}, // 12
+                                     {"add"}, // 12
                                      {'*'}, // 13
                                      {'/'}, // 14
                                      {"then"}, // 15
@@ -38,7 +39,12 @@ char words[4][1024][1024] = {{ // types
                                      {"print"}, // 17
                                      {"for"}, // 18
                                      {"val"}, // 19
-                                     {"do"} // 20
+                                     {"do"}, // 20
+                                     {"while"}, // 21
+                                     {"next"}, // 22
+                                     {":"}, // 23
+                                     {"program"}, // 24
+                                     {"var"}, // 25
                              },
                              { // vars values
                                      {112},
@@ -224,6 +230,8 @@ bool syntax_check(char _map[]) {
     bool work_space = false;
     bool is_if = false;
     bool has_next_token = false;
+
+    bool was_start = false;
     char tmp_var_name[1024];
 
     for (int i = 0; *(tokens + i); i++) {
@@ -231,15 +239,36 @@ bool syntax_check(char _map[]) {
 
             char **delimited_str = str_split(tokens[i], ',');
             char *table_number = delimited_str[0];
+            char *table_val = delimited_str[1];
 
-            if (strcmp(table_number, "0") == 0) {
-                char *var_type = delimited_str[1];
-                printf("TYPE VAR IS:%s\n", words[0][atoi(var_type)]);
-                strcpy(type_var, words[0][atoi(var_type)]);
-                syntax_lvl = 1;
-                var_declaration = true;
+            if(strcmp(table_number, "1")==0 && strcmp(table_val, "24")==0){
+                was_start = true;
+                printf("WORD program FIND\n");
+                continue;
             }
+            else if(strcmp(table_number, "1")==0 && strcmp(table_val, "25")==0 && was_start){
+                was_start = true;
+                printf("WORD var FIND\n");
+                continue;
+            }
+            if(syntax_lvl == 0) {
+                if (strcmp(table_number, "3") == 0) {
+                    char *var_name = delimited_str[1];
+                    printf("DECLARATION NAME VAR IS:%s\n", words[3][atoi(var_name)]);
+                    strcpy(type_var, words[3][atoi(var_name)]);
 
+                    for (int name = 0; name < 1024; name++) {
+                        if (strcmp(def_vars[name].name, words[3][atoi(var_name)]) == 0) {
+                            vars_count_replace = vars_count;
+                            var_replacing = true;
+                            vars_count = name;
+                        }
+                    }
+                    strcpy(def_vars[vars_count].name, words[3][atoi(var_name)]);
+                    syntax_lvl = 1;
+                    var_declaration = true;
+                }
+            }
             if(strcmp(table_number, "1") == 0 && strcmp(delimited_str[1], "5") == 0){
                 syntax_lvl = 3;
                 work_space = true;
@@ -248,20 +277,15 @@ bool syntax_check(char _map[]) {
 
             if (var_declaration) {
 
-                if (syntax_lvl == 1) { // CHECK NAME VAR
+                if (syntax_lvl == 1) { // CHECK TYPE VAR
                     char *var_number = delimited_str[1];
-                    if (strcmp(table_number, "3") == 0) {
-                        printf("NAME VAR IS:%s\n", words[3][atoi(var_number)]);
-                        strcpy(tmp_var_name, words[3][atoi(var_number)]);
-
-                        for (int name = 0; name < 1024; name++) {
-                            if (strcmp(def_vars[name].name, words[3][atoi(var_number)]) == 0) {
-                                vars_count_replace = vars_count;
-                                var_replacing = true;
-                                vars_count = name;
-                            }
-                        }
-                        strcpy(def_vars[vars_count].name, words[3][atoi(var_number)]);
+                    if(strcmp(table_number, "1")==0 && strcmp(table_val, "1")==0){
+                        printf("DELIMITER : FIND\n");
+                        continue;
+                    }
+                    if (strcmp(table_number, "0") == 0) {
+                        printf("TYPE VAR IS:%s\n", words[0][atoi(var_number)]);
+                        strcpy(tmp_var_name, words[0][atoi(var_number)]);
 
                         int pr_len = strlen(prohibited);
                         for (int j = 0; j < pr_len; j++) {
@@ -272,8 +296,10 @@ bool syntax_check(char _map[]) {
                                 break;
                             }
                         }
-                        syntax_lvl = 2;
+                        syntax_lvl = 0;
                         i++;
+                        var_declaration = false;
+                        vars_count++;
                     }
                 } else if (syntax_lvl == 2) { // CHECK VALUE OF VAR
                     char *var_val = delimited_str[1];
@@ -327,7 +353,6 @@ bool syntax_check(char _map[]) {
                 var_replacing = false;
             }
             if (work_space){
-                char *table_val = delimited_str[1];
                 if (syntax_lvl == 3) { // ENTER AFTER BEGIN
                     if(strcmp(table_val, "16")==0 && strcmp(table_number, "1")==0 && is_if){
                         printf("FIND 'END'. IF END.\n");
@@ -561,7 +586,6 @@ bool syntax_check(char _map[]) {
                         break;
                     }
                 }
-
             }
         }
     }
@@ -583,9 +607,11 @@ void code_check_file_write(const char chars[300]) {
     bool type_declaration = true;
     int tmp_del = 0;
     bool not_type = true;
+    int i=0;
+
     for (int i = 0; *(chars + i); i++) {
-        int a = sizeof(*words[1]);
-        for (int del = 0; del <= 20; del++) {
+        for (int del = 0; del <= 25; del++) {
+
             for (int sub_del = 0; *(words[1][del] + sub_del); sub_del++) {
 
                 if(chars[i] == words[1][del][0]){
@@ -620,9 +646,7 @@ void code_check_file_write(const char chars[300]) {
                     if(strcmp("", tmp_type)==0){
 //                        break;
                     }
-                    if(strcmp("", tmp)==0){
-                        break;
-                    }
+
 
                     if(!type_declaration && (strcmp("", tmp_type)!=0)) {
                         for (int kk = 0; kk < 1024; kk++) {
@@ -634,6 +658,9 @@ void code_check_file_write(const char chars[300]) {
                                 memset(tmp_str, '\0', sizeof(tmp_str));
                             }
                         }
+                    }
+                    if(strcmp("", tmp)==0){
+                        break;
                     }
                         if (isNumber(tmp) || tmp[0] == '"') {
                             strcpy(words[2][vars], tmp);
@@ -702,7 +729,16 @@ void code_check_file_write(const char chars[300]) {
             }
         }
     }
+
     tmp[j] = chars[i];
+
+    if (tmp[0] == words[1][1][0] && !type_declaration) {
+        tmp[0] = '\0';
+        for(int k = 1; *(tmp+k); k++){
+            tmp[k] = tmp[k];
+        }
+        i--;
+    }
     j++;
 
 }
@@ -717,22 +753,31 @@ bool syntax_next = syntax_check(map);
 
 int main() {
     char code[] =
-                  "int kill assign 1;\n"
-                  "char my assign \"2\";\n"
-                  "float self assign 3;\n"
-                  "int kill assign 2;\n"
-                  "int z assign 88;\n"
-                  "int y assign z;\n"
-                  "int a assign y;\n"
-                  "begin\n"
-                  "if y>z then\n"
-                  "y assign kill+y;\n"
-                  "z assign y*y+z-y;\n"
-                  "end;\n"
-                  "for i assign z val 10 do y assign 10 + z;\n"
-//                  "y++;\n"
-//                  "print(z);"
-                  "\\0";
+            "program var\n"
+            "a:int;\n"
+            //                  "char my assign \"2\";\n"
+            "self:float;\n"
+            "kill:int;\n"
+//            "kill2:int;\n"
+            //                  "int kill assign 2;\n"
+            "z:int;\n"
+            "y:int;\n"
+//            "a:int;\n"
+            "begin\n"
+            ";a assign 10"
+            ";z assign 10"
+            ";y assign 10"
+            ";kill assign 10"
+            ";if y>z then\n"
+            ";y assign kill add y\n"
+            ";z assign y*y add z disa y\n"
+            "end\n"
+            //"for i assign z val 10 do y assign 10 add z;\n"
+            //"while z val 10 do y assign 10 add z next;\n"
+            //                  "y++;\n"
+            //                  "print(z);"
+            "\\0";
+
     removeSpacesAndNewlines(code);
     code_check_file_write(code);
 
