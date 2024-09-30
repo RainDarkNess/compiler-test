@@ -226,13 +226,32 @@ bool syntax_check(char _map[]) {
 
     bool not_error = true;
     bool var_declaration = false;
-    bool var_replacing = false;
-    bool work_space = false;
-    bool is_if = false;
-    bool has_next_token = false;
 
+    // not used
+    bool var_replacing = false;
+
+    // code body
+    bool work_space = false;
+
+    // if bool
+    bool is_if = false;
+
+    // Cycles bools
+    bool has_next_token = false;
+    bool is_while = false;
+    bool has_val = false;
+    bool has_condition = false;
+    bool has_equaling = false;
+
+    // program start
     bool was_start = false;
     char tmp_var_name[1024];
+
+    int line=0;
+
+    printf("______________________________\n");
+    printf("PROGRAM SYNTAX ANALYSE STARTED\n");
+    printf("______________________________\n");
 
     for (int i = 0; *(tokens + i); i++) {
         if (not_error) {
@@ -240,7 +259,10 @@ bool syntax_check(char _map[]) {
             char **delimited_str = str_split(tokens[i], ',');
             char *table_number = delimited_str[0];
             char *table_val = delimited_str[1];
-
+            if((strcmp(table_number, "1")==0 && strcmp(table_val, "1")==0) ||
+            (strcmp(table_number, "1")==0 && strcmp(table_val, "5")==0)){
+                line++;
+            }
             if(strcmp(table_number, "1")==0 && strcmp(table_val, "24")==0){
                 was_start = true;
                 printf("WORD program FIND\n");
@@ -250,6 +272,10 @@ bool syntax_check(char _map[]) {
                 was_start = true;
                 printf("WORD var FIND\n");
                 continue;
+            }else if(!was_start){
+                printf("ERROR. has not required token 'program var'\n");
+                not_error = false;
+                break;
             }
             if(syntax_lvl == 0) {
                 if (strcmp(table_number, "3") == 0) {
@@ -259,9 +285,12 @@ bool syntax_check(char _map[]) {
 
                     for (int name = 0; name < 1024; name++) {
                         if (strcmp(def_vars[name].name, words[3][atoi(var_name)]) == 0) {
-                            vars_count_replace = vars_count;
-                            var_replacing = true;
-                            vars_count = name;
+//                            vars_count_replace = vars_count;
+//                            var_replacing = true;
+//                            vars_count = name;
+                            printf("ERROR. Var name is used:%s\n", words[3][atoi(var_name)]);
+                            not_error = false;
+                            break;
                         }
                     }
                     strcpy(def_vars[vars_count].name, words[3][atoi(var_name)]);
@@ -366,10 +395,17 @@ bool syntax_check(char _map[]) {
                             printf("IF FIND\n");
                             is_if = true;
                             continue;
-                        }else if(strcmp(table_val, "18") == 0){ // Finding for
+                        }else if((strcmp(table_val, "18") == 0) || (strcmp(table_val, "21") == 0)){ // Finding for or while
                             syntax_lvl = 8;
-                            printf("FOR FIND\n");
-                            is_if = true;
+
+
+                            printf("CYCLE '%s' FIND\n", words[1][atoi(table_val)]);
+                            is_while = (strcmp(table_val, "21") == 0);
+                            has_val = is_while;
+                            has_equaling = is_while;
+                            has_condition = false;
+
+//                            is_if = true;
                             continue;
                         }else{
                             printf("DELIMITER FIND '%s'\n", words[1][atoi(table_val)]);
@@ -387,7 +423,7 @@ bool syntax_check(char _map[]) {
                             syntax_lvl = 4;
                             continue;
                         } else {
-                            printf("unexpected token '%s'.\n", words[3][atoi(table_val)]);
+                            printf("unexpected token '%s'. Var is undefined\n", words[atoi(table_number)][atoi(table_val)]);
                             not_error = false;
                             break;
                         }
@@ -431,7 +467,7 @@ bool syntax_check(char _map[]) {
                             }
                         }
                         if(!var_find){
-                            printf("unexpected token '%s'.\n", words[atoi(table_number)][atoi(table_val)]);
+                            printf("unexpected token '%s'. Var is undefined\n", words[atoi(table_number)][atoi(table_val)]);
                             not_error = false;
                             break;
                         }
@@ -499,7 +535,7 @@ bool syntax_check(char _map[]) {
                     continue;
                 }
 
-                if(syntax_lvl == 8){ // FOR
+                if(syntax_lvl == 8){ // CYCLES
                     table_val = delimited_str[1];
                     if(strcmp(table_number, "3")==0){
                         bool var_find = false;
@@ -520,33 +556,40 @@ bool syntax_check(char _map[]) {
 //                            break;
                         }
                     }
-                    else if(strcmp(table_number, "1")==0 && strcmp(table_val, "19")==0){
+                    else if(strcmp(table_number, "1")==0 && strcmp(table_val, "19")==0 && has_equaling){
                         printf("WORD VAL FOUND\n");
-                        has_next_token = true;
+                        has_val = true;
                         continue;
                     }
-                    else if(strcmp(table_number, "2")==0 && has_next_token){
+                    else if(strcmp(table_number, "2")==0 && has_val){
                         printf("VAL '%s' FOUND.\n", words[atoi(table_number)][atoi(table_val)]);
-                        has_next_token = true;
+                        has_condition = true;
                         continue;
-                    }
-                    else if(strcmp(table_number, "1")==0 && strcmp(table_val, "20")==0 && has_next_token){
+                    }else if(strcmp(table_val, "2") == 0 && is_while){ // condition in while
+                        printf("FIND '>'\n");
+                        has_condition = true;
+                        continue;
+                    }else if(strcmp(table_val, "4") == 0 && is_while){
+                        printf("FIND '<'\n");
+                        has_condition = true;
+                        continue;
+                    }else if(strcmp(table_number, "1")==0 && strcmp(table_val, "20")==0 && has_condition){
                         printf("DO FOUND\n");
                         syntax_lvl = 3;
                     }else{
-                        printf("unexpected token '%s'.\n", words[atoi(table_number)][atoi(table_val)]);
+                        printf("required token not find. Find '%s'.\n", words[atoi(table_number)][atoi(table_val)]);
                         not_error = false;
                         break;
                     }
-                    if(strcmp(table_val, "2") == 0){ // condition in if
-                        printf("FIND '>'\n");
-                    }else if(strcmp(table_val, "4") == 0){
-                        printf("FIND '<'\n");
-                    }else if(strcmp(table_val, "15") == 0){
-                        printf("FIND 'Then'. IF STARTED.\n");
-                        syntax_lvl = 3;
-                        is_if = true;
-                    }
+//                    if(strcmp(table_val, "6") == 0){
+//                        printf("FIND IF STARTED.\n");
+//                        syntax_lvl = 7;
+//                        is_if = true;
+//                    }else if((strcmp(table_val, "21") == 0) || (strcmp(table_val, "18") == 0)){
+//                        printf("FIND 'Then'. IF STARTED.\n");
+//                        syntax_lvl = 8;
+//                        is_if = true;
+//                    }
                     continue;
                 }
 
@@ -573,6 +616,7 @@ bool syntax_check(char _map[]) {
                         }
                         if(var_find){
                             vars_count++;
+                            has_equaling = true;
                             syntax_lvl = 8;
                         }else{
                             printf("unexpected token '%s'.\n", words[atoi(table_number)][atoi(table_val)]);
@@ -588,6 +632,9 @@ bool syntax_check(char _map[]) {
                 }
             }
         }
+    }
+    if(!not_error) {
+        printf("Error on %d line.\n", line);
     }
     return not_error;
 }
@@ -608,7 +655,9 @@ void code_check_file_write(const char chars[300]) {
     int tmp_del = 0;
     bool not_type = true;
     int i=0;
-
+    printf("______________________________\n");
+    printf("PROGRAM LEXEME ANALYSE STARTED\n");
+    printf("______________________________\n");
     for (int i = 0; *(chars + i); i++) {
         for (int del = 0; del <= 25; del++) {
 
@@ -744,8 +793,10 @@ void code_check_file_write(const char chars[300]) {
 }
 
 file_write("C:\\Users\\rain\\CLionProjects\\CTest\\1.txt", map);
+
 bool syntax_next = syntax_check(map);
     if(syntax_next){
+
         code_work(map);
     }
 }
@@ -755,25 +806,27 @@ int main() {
     char code[] =
             "program var\n"
             "a:int;\n"
-            //                  "char my assign \"2\";\n"
             "self:float;\n"
             "kill:int;\n"
-//            "kill2:int;\n"
-            //                  "int kill assign 2;\n"
             "z:int;\n"
             "y:int;\n"
-//            "a:int;\n"
             "begin\n"
-            ";a assign 10"
-            ";z assign 10"
-            ";y assign 10"
-            ";kill assign 10"
+            ";a assign 10\n"
+            ";z assign 10\n"
+            ";y assign 10\n"
+            ";kill assign 10\n"
             ";if y>z then\n"
             ";y assign kill add y\n"
             ";z assign y*y add z disa y\n"
-            "end\n"
-            //"for i assign z val 10 do y assign 10 add z;\n"
-            //"while z val 10 do y assign 10 add z next;\n"
+            ";end\n"
+            ";for i assign z val 10 do\n"
+            "   ;y assign 10 add z\n"
+            ";while z > 10 do\n"
+            ";z assign z disa 1\n"
+            "   ;while a < 10 do\n"
+            "   ;a assign a add 1\n"
+            "   next\n"
+            "next\n"
             //                  "y++;\n"
             //                  "print(z);"
             "\\0";
