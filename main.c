@@ -287,14 +287,17 @@ bool syntax_check(char _map[]) {
     // code body
     bool work_space = false;
 
-    // if bool
+    // bools for if
     bool is_if = false;
+    bool has_condition_if = false;
+    bool then_find = false;
+    bool var_find_if = false;
 
     // Cycles bools
     bool has_next_token = false;
     bool is_while = false;
     bool has_val = false;
-    bool has_condition = false;
+    bool has_condition_cycle = false;
     bool has_equaling = false;
     bool is_cycle = false;
 
@@ -442,6 +445,12 @@ bool syntax_check(char _map[]) {
 
                 if (syntax_lvl == 3) { // ENTER AFTER BEGIN
 
+                    if(is_if && !then_find){
+                        printf("ERROR. Required token 'Then' in if not found\n");
+                        not_error = false;
+                        break;
+                    }
+
                     if((val_find_local_tmp || var_find_local_tmp)&& !var_action){
 
                         if(strcmp(table_number, "1")==0 && strcmp(table_val, "1")==0){
@@ -465,6 +474,11 @@ bool syntax_check(char _map[]) {
                     if(strcmp(table_val, "16")==0 && strcmp(table_number, "1")==0 && is_if){
                         printf("FIND 'END'. IF END.\n");
                         is_if = false;
+                        then_find = false;
+                    }else if(strcmp(table_val, "16")==0 && strcmp(table_number, "1")==0 && !is_if){
+                        printf("Error. If is not open\n");
+                        not_error = false;
+                        break;
                     }
                     if(strcmp(table_val, "22")==0 && strcmp(table_number, "1")==0 && is_cycle){
                         printf("FIND 'NEXT'. WHILE ENDED.\n");
@@ -488,7 +502,7 @@ bool syntax_check(char _map[]) {
                             has_equaling = is_while;
                             is_cycle = is_while;
 
-                            has_condition = false;
+                            has_condition_cycle = false;
 //                            is_if = true;
                             continue;
                         }else{
@@ -584,42 +598,8 @@ bool syntax_check(char _map[]) {
 
                         continue;
                     }
-
-//                    if(strcmp(table_number, "1") == 0) {
-//                        if (strcmp(table_val, "10") == 0) {
-//                            var_action = true;
-//                            printf("IS MINUS\n");
-//                            continue;
-//                        } else if (strcmp(table_val, "12") == 0) {
-//                            var_action = true;
-//                            printf("IS PLUS\n");
-//                            continue;
-//                        } else if (strcmp(table_val, "13") == 0) {
-//                            var_action = true;
-//                            printf("IS MULTIPLY\n");
-//                            continue;
-//                        } else if (strcmp(table_val, "14") == 0) {
-//                            var_action = true;
-//                            printf("IS DIV\n");
-//                            continue;
-//                        }
-//                        if (var_action) {
-//                            printf("ERROR. Variable not found.\n");
-//                            not_error = false;
-//                            break;
-//                        }else {
-//                            syntax_lvl = 3;
-//                            var_action = false;
-////                            continue;
-//                        }
-//                    }else {
-//                        syntax_lvl = 3;
-//                        var_action = false;
-////                            continue;
-//                    }
-
                 }
-                if(syntax_lvl == 6){ // ENTER IF...OLD VERSION FOR {}: NOT USED
+                if(syntax_lvl == 6){ // REUSE BLOCK FOR EQUATION
                     bool var_find_eq = false;
 //                    bool val_find_eq = false;
                     if(strcmp(table_number, "3")==0){ // Var check
@@ -696,32 +676,48 @@ bool syntax_check(char _map[]) {
                 if(syntax_lvl == 7){ // IF
                     table_val = delimited_str[1];
                     if(strcmp(table_number, "3")==0){
-                        bool var_find = false;
                         for (int j = 0; j < 1024; j++){
                             if(strcmp(def_vars[j].name, words[3][atoi(table_val)]) == 0){
                                 printf("VAR %s FIND. VALUE IS %d\n", def_vars[j].name, def_vars[j].value_int);
-                                var_find = true;
+                                var_find_if = true;
                             }
-                            if(var_find){
+                            if(var_find_if){
                                 break;
                             }
                         }
-                        if(!var_find){
+                        if(!var_find_if){
                             printf("unexpected token '%s'.\n", words[atoi(table_number)][atoi(table_val)]);
                             not_error = false;
                             break;
                         }
                     }
-                    if(strcmp(table_val, "2") == 0){ // condition in if
-                        printf("FIND '>'\n");
-                    }else if(strcmp(table_val, "4") == 0){
-                        printf("FIND '<'\n");
-                    }else if(strcmp(table_val, "15") == 0){
-                        printf("FIND 'Then'. IF STARTED.\n");
-                        syntax_lvl = 3;
-                        is_if = true;
+                    if(strcmp(table_number, "1")==0) {
+                        if (strcmp(table_val, "2") == 0) { // condition in if
+                            printf("FIND '>'\n");
+                            has_condition_if = true;
+                            var_find_if = false;
+                        } else if (strcmp(table_val, "4") == 0) {
+                            printf("FIND '<'\n");
+                            has_condition_if = true;
+                            var_find_if = false;
+                        } else if (strcmp(table_val, "15") == 0 && has_condition_if && var_find_if) {
+                            printf("FIND 'Then'. IF STARTED.\n");
+                            syntax_lvl = 3;
+                            then_find = true;
+                            var_find_if = false;
+                        } else if(!var_find_if && has_condition_if) {
+                            printf("Error. Unespected token, value not found %s\n",
+                                   words[atoi(table_number)][atoi(table_val)]);
+                            not_error = false;
+                            break;
+                        } else if (!has_condition_if) {
+                            printf("Condition not found! Checking var value\n",
+                                   words[atoi(table_number)][atoi(table_val)]);
+                        }else{
+                            syntax_lvl = 3;
+                        }
+                        continue;
                     }
-                    continue;
                 }
 
                 if(syntax_lvl == 8){ // CYCLES
@@ -752,17 +748,17 @@ bool syntax_check(char _map[]) {
                     }
                     else if(strcmp(table_number, "2")==0 && has_val){
                         printf("VAL '%s' FOUND.\n", words[atoi(table_number)][atoi(table_val)]);
-                        has_condition = true;
+                        has_condition_cycle = true;
                         continue;
                     }else if(strcmp(table_val, "2") == 0 && is_while){ // condition in while
                         printf("FIND '>'\n");
-                        has_condition = true;
+                        has_condition_cycle = true;
                         continue;
                     }else if(strcmp(table_val, "4") == 0 && is_while){
                         printf("FIND '<'\n");
-                        has_condition = true;
+                        has_condition_cycle = true;
                         continue;
-                    }else if(strcmp(table_number, "1")==0 && strcmp(table_val, "20")==0 && has_condition){
+                    }else if(strcmp(table_number, "1")==0 && strcmp(table_val, "20")==0 && has_condition_cycle){
                         printf("DO FOUND\n");
                         syntax_lvl = 3;
                     }else{
@@ -1009,9 +1005,9 @@ int main() {
             ";a assign z\n"
             ";y assign 10\n"
             ";kill assign 10\n"
-            ";if y>z then\n"
+            ";if y>a then\n"
             ";y assign kill add y add a\n"
-            ";z assign kill add a add a\n"
+            ";z assign 10 add 10 add 10\n"
             ";z assign y*y add z disa y\n"
             ";end\n"
             ";y assign 10\n"
