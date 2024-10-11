@@ -1,0 +1,33 @@
+program var
+a:int;
+self:float;
+test,test1,test2:float;
+z:int;
+testBool:bool;
+y:float;
+begin
+;self assign 1.5
+;z assign 1
+;test assign 1.23E-1
+;test1 assign 1.23E1
+;test2 assign 1.23E+1
+;a assign 1ABFFFh
+;testBool assign false
+;y assign 1.5566999
+;test assign self
+if y GRT a then
+   ;y assign 10.2 add y add a
+   ;z assign 10.3 add 10 add 10
+   ;z assign y*y add z disa y
+;end
+;y assign 10.5
+for i assign 1 val 10 do
+   ;y assign 10 add z
+   while z GRT z do
+       ;z assign z disa 1
+       while a LOWT 10 do
+           ;a assign a add 1
+       next
+   next
+next
+end..
