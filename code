@@ -17,8 +17,8 @@ begin
 ;test assign self
 if y GRT a then
    ;y assign 10.2 add y add a
-   ;z assign 10.3 add 10 add 10
-   ;z assign y*y add z disa y
+   ;y assign z del testBool add 10
+   ;z assign y umn y add z disa y
 ;end
 ;y assign 10.5
 for i assign 1 val 10 do

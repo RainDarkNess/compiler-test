@@ -36,8 +36,8 @@ char words[4][1024][1024] = {{ // types
                                      {"disa"}, // 10
                                      {'+','+'}, // 11
                                      {"add"}, // 12
-                                     {'*'}, // 13
-                                     {'/'}, // 14
+                                     {"umn"}, // 13
+                                     {"del"}, // 14
                                      {"then"}, // 15
                                      {"end."}, // 16
                                      {"print"}, // 17
@@ -55,8 +55,8 @@ char words[4][1024][1024] = {{ // types
                                      {"GRE"}, // 29
                                      {"end"}, // 30
                                      {","}, // 31
-                                     {"["},
-                                     {"]"},
+                                     {"["}, // 32
+                                     {"]"}, // 33
                              },
                              { // vars values
                                      {112},
@@ -520,59 +520,10 @@ int putValToVar(int number_dist, char value[]){
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 bool code_work(char _map[]){
-    int lvl = 0;
-    char **tokens = str_split(_map, ';');
-    bool start = false;
-    int tmp_value;
 
-    for (int i = 0; *(tokens + i); i++) {
-        char **delimited_str = str_split(tokens[i], ',');
-        char *table_number = delimited_str[0];
-        char *table_value  = delimited_str[1];
-       printf("%s\n", table_number);
-        if(strcmp(table_number, "1")==0 && strcmp(table_value, "5")==0){
-            start = true;
-            continue;
-        }
-        if(start){
-            table_value  = delimited_str[1];
-            if(lvl == 0) {
-                if (strcmp(table_number, "3") == 0) { // vars find
-                    tmp_value = atoi(table_value);
-                    lvl = 1; // var work
-                    continue;
-                }
-            }
-            if(lvl == 1){
-                table_value  = delimited_str[1];
-
-                if(strcmp(table_number, "1")==0 && strcmp(table_value, "0")==0){ // equaling
-                    lvl = 2;
-                    continue;
-                }
-            }
-            if(lvl == 2){
-                int value = 0;
-                bool var_find = false;
-                for(int j=0;j<1024;j++){
-                    if(strcmp(def_vars[j].name, words[3][tmp_value]) == 0){
-                        var_find = true;
-                        value = def_vars[j].value_int;
-                        break;
-                    }
-                }
-                if(var_find){
-                   printf("%d\n", value);
-                }
-            }
-
-        }
-    }
     return false;
 }
 
-// TODO: Нужно сделать проверку на отсуствие записи в переменной, приравнивание ее к пустоте и проверку условий на полноту
-// TODO: Проверка на деления, на добавление переменных с буквами, добавление 2ой и 16ой и эксп формы
 bool syntax_check(char _map[]) {
     char **tokens = str_split(_map, ';');
     int syntax_lvl = 0;
@@ -589,6 +540,7 @@ bool syntax_check(char _map[]) {
     bool not_one = false;
     int count_vars_names = 0;
     char* tmp_vars_names[1024];
+    char* type_for_check;
 
     int var_num_local_tmp = 0;
     int find_var = 0;
@@ -819,6 +771,7 @@ bool syntax_check(char _map[]) {
                             if (strcmp(def_vars[j].name, words[3][atoi(table_val)]) == 0) {
                                 printf("FIND VAR %s\n", words[3][atoi(table_val)]);
                                 var_find = true;
+                                type_for_check = def_vars[j].type;
                                 find_var = j;
                                 break;
                             }
@@ -875,7 +828,6 @@ bool syntax_check(char _map[]) {
                                     var_find_local_tmp = true;
                                     var_action = false;
                                     found_val_or_var = true;
-
                                     var_num_local_tmp = j;
 //                                    syntax_lvl = 5;
                                     syntax_lvl = 3;
@@ -969,6 +921,11 @@ bool syntax_check(char _map[]) {
                         } else if (strcmp(table_val, "14") == 0) {
                             var_action = true;
                            printf("IS DIV\n");
+                           if(strcmp(type_for_check, "int") == 0 || strcmp(type_for_check, "bool") == 0){
+                               printf("Error. Find int in DIV operation.\n");
+                               not_error = false;
+                               break;
+                           }
 //                            continue;
                         }else if (var_action) {
                             printf("Error. Variable not found.\n");
@@ -1252,7 +1209,7 @@ void code_check_file_write(const char chars[300]) {
         if(we_have_problem)
             break;
 
-        for (int del = 0; del <= 31; del++) {
+        for (int del = 0; del <= 33; del++) {
 
             for (int sub_del = 0; *(words[1][del] + sub_del); sub_del++) {
 
