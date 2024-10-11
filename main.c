@@ -442,17 +442,21 @@ bool isNumber(char const *const text) {
 
 void removeSpacesAndNewlines(char *str) {
     char *result = str;
+    bool comment_found = false;
 
     for (int i = 0; str[i] != '\0'; i++) {
 
-        if (!isspace((unsigned char)str[i])) {
+        if(str[i] == '#') {
+            if(comment_found){
+                i++;
+            }
+            comment_found = !comment_found;
+        }
+
+        if (!isspace((unsigned char)str[i]) && !comment_found) {
             *result = str[i];
             result++;
         }
-//        if (str[i] != '\n') {
-//            *result = str[i];
-//            result++;
-//        }
     }
     *result = '\0';
 }
