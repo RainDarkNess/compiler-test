@@ -54,6 +54,7 @@ char words[4][1024][1024] = {{ // types
                                      {","}, // 31
                                      {"["}, // 32
                                      {"]"}, // 33
+                                     {"displ"}, // 34
                              },
                              { // vars values
                                      {112},
@@ -512,6 +513,14 @@ int putValToVar(int number_dist, char value[]){
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 bool code_work(char _map[]){
+    __asm__("a: .word 0\n"
+            "self: .float 0.0\n"
+            "test: .float 0.0\n"
+            "test1: .float 0.0\n"
+            "test2: .float 0.0\n"
+            "z: .word 0\n"
+            "testBool: .byte 0\n"
+            "y: .float 0.0");
     return false;
 }
 
@@ -561,6 +570,9 @@ bool syntax_check(char _map[]) {
     bool is_cycle = false;
     bool var_find_cycle = false;
     bool has_value_cycle = false;
+
+    // In function
+    bool in_function = false;
 
     // Program start
     bool was_start = false;
@@ -682,6 +694,14 @@ bool syntax_check(char _map[]) {
                         not_error = false;
                         break;
                     }
+
+                    if(strcmp(table_number, "1") == 0 && strcmp(table_val, "34") == 0){
+                        printf("FIND Function 'displ'\n");
+                        syntax_lvl = 10;
+                        printf("Trying to find variable\n");
+                        in_function = true;
+                    }
+
 
                     if((val_find_local_tmp || var_find_local_tmp)&& !var_action){
 
@@ -863,7 +883,7 @@ bool syntax_check(char _map[]) {
                     }
                     else if(strcmp(table_number, "2")==0){ // Var value check
                         found_val_or_var = true;
-                        printf("FIND VALUE IS %s\n", words[atoi(table_number)][atoi(table_val)]);
+                        printf("_FIND_ VALUE IS %s\n", words[atoi(table_number)][atoi(table_val)]);
                     }
 
                     if(strcmp(table_number, "1") == 0 && !found_val_or_var) {
@@ -905,6 +925,10 @@ bool syntax_check(char _map[]) {
                         syntax_lvl = 3;
                         var_action = false;
                         val_find_local_tmp, var_find_local_tmp = false;
+                        if(in_function) {
+                            syntax_lvl = 10;
+                            continue;
+                        }
                         continue;
                     }
                     syntax_lvl = 6;
@@ -1097,6 +1121,21 @@ bool syntax_check(char _map[]) {
                         break;
                     }
                 }
+                if(syntax_lvl == 10){ // Function check
+                    if(strcmp(table_number, "1") == 0 && strcmp(table_val, "31") == 0){
+                        syntax_lvl = 6;
+                        printf("Find ',' function is continue\n");
+                        continue;
+                    }else if(strcmp(table_val, "1")==0 && strcmp(table_number, "1") == 0){
+                        if (in_function) {
+                            in_function = false;
+                            printf("Function is ended\n");
+                            syntax_lvl = 3;
+                        }
+                    }else{
+                        syntax_lvl = 6;
+                    }
+                }
             }
         }
     }
@@ -1138,7 +1177,7 @@ void code_check_file_write(const char chars[300]) {
         if(we_have_problem)
             break;
 
-        for (int del = 0; del <= 33; del++) {
+        for (int del = 0; del <= 34; del++) {
 
             for (int sub_del = 0; *(words[1][del] + sub_del); sub_del++) {
 

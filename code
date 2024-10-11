@@ -11,21 +11,26 @@
 
 # Начало программы #
 program var
+
+# Объявление переменных #
 a:int;
 self:float;
-
-# Объявление нескольких переменных #
-test,test1,test2:float;
 z:int;
 testBool:bool;
 y:float;
 
+# Объявление нескольких переменных #
+test,test1,test2:float;
+
 # Начало работы программы #
 begin
 
+# Присвоение int`овой величины #
+;z assign 1
+
 # Приравнивание к переменной float`овой величины #
 ;self assign 1.5
-;z assign 1
+;y assign 1.5566999
 
 # Использование научной записи #
 ;test assign 1.23E-1
@@ -34,9 +39,12 @@ begin
 
 # 16тиричная запись #
 ;a assign 1ABFFFh
+
+# Логическая запись #
 ;testBool assign false
-;y assign 1.5566999
-;test assign self
+
+# Перезаписывание значения переменной засчет другой #
+;test assign test2
 
 # Условный оператор #
 if y GRT a then
@@ -44,12 +52,12 @@ if y GRT a then
    ;y assign z del testBool add 10
    ;z assign y umn y add z disa y
 ;end
+
 ;y assign 10.5
 
 # Цикл с известной длиной #
 for i assign 1 val 10 do
    ;y assign 10 add z
-
    # Цикл с неизвестной длиной #
    while z GRT z do
        ;z assign z disa 1
@@ -58,4 +66,5 @@ for i assign 1 val 10 do
        next
    next
 next
+;displ y add 2, z disa 1, z add z
 end..
