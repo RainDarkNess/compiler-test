@@ -1,0 +1,6 @@
+program var
+a:int;
+begin
+;a assign 1
+;displ a
+end..

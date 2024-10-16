@@ -512,15 +512,11 @@ int putValToVar(int number_dist, char value[]){
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool code_work(char _map[]){
-    __asm__("a: .word 0\n"
-            "self: .float 0.0\n"
-            "test: .float 0.0\n"
-            "test1: .float 0.0\n"
-            "test2: .float 0.0\n"
-            "z: .word 0\n"
-            "testBool: .byte 0\n"
-            "y: .float 0.0");
+bool code_work(){
+//    __asm__("");
+    for(int i = 0; i < vars_count; i++){
+
+    }
     return false;
 }
 
@@ -745,7 +741,7 @@ bool syntax_check(char _map[]) {
                     }
                     if (strcmp(table_number, "1") == 0){ // Finding delimiter
                         table_val = delimited_str[1];
-                        if(strcmp(table_val, "6") == 0){ // if find
+                        if(strcmp(table_val, "6") == 0){ // If find
                             syntax_lvl = 7;
                             printf("IF FIND\n");
                             is_if = true;
@@ -1325,7 +1321,7 @@ void code_check_file_write(const char chars[300]) {
         bool syntax_next = syntax_check(map);
         if (syntax_next) {
 
-            code_work(map);
+            code_work();
         }
     }
 }
@@ -1337,7 +1333,7 @@ int main() {
     long lSize;
     char *buffer;
 
-    fp = fopen ( "C:\\Users\\rain\\CLionProjects\\CTest\\code" , "rb" );
+    fp = fopen ( "C:\\Users\\rain\\CLionProjects\\CTest\\code2" , "rb" );
     if( !fp ) perror("C:\\Users\\rain\\CLionProjects\\CTest\\code"),exit(1);
 
     fseek( fp , 0L , SEEK_END);

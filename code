@@ -67,4 +67,5 @@ for i assign 1 val 10 do
    next
 next
 ;displ y add 2, z disa 1, z add z
+;displ y
 end..

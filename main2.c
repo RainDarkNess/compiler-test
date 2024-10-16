@@ -88,3 +88,9 @@
 //
 //    return 0;
 //}
+#include "stdio.h"
+int main(){
+    float q = 1.1;
+    printf("%f", q);
+    return 0;
+}
