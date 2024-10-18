@@ -2,5 +2,6 @@ program var
 a:int;
 begin
 ;a assign 1
+;a assign (1 + 1) * 2
 ;displ a
 end..
