@@ -48,230 +48,24 @@ begin
 
 # Условный оператор #
 if y GRT a then
-   ;y assign 10.2 add y add a
-   ;y assign z del testBool add 10
-   ;z assign 2umn1add1disa2
+   ;y assign 10.2 | y | a
+   ;y assign z / testBool | 10
+   ;z assign 2 * 1 | 1 - 2
 ;end
 
 ;y assign 10.5
 
 # Цикл с известной длиной #
 for i assign 1 val 10 do
-   ;y assign 10 add z
+   ;y assign 10 | z
    # Цикл с неизвестной длиной #
    while z GRT z do
-       ;z assign z disa 1
+       ;z assign z - 1
        while a LOWT 10 do
-           ;a assign a add 1
+           ;a assign a | 1
        next
    next
 next
-;displ y add 2, z disa 1, z add z
-
-for i assign 1 val 10 do
-   ;y assign 10 add z
-   # Цикл с неизвестной длиной #
-   while z GRT z do
-       ;z assign z disa 1
-       while a LOWT 10 do
-           ;a assign a add 1
-       next
-   next
-next
-;displ y add 2, z disa 1, z add z
-
-for i assign 1 val 10 do
-   ;y assign 10 add z
-   # Цикл с неизвестной длиной #
-   while z GRT z do
-       ;z assign z disa 1
-       while a LOWT 10 do
-           ;a assign a add 1
-       next
-   next
-next
-;displ y add 2, z disa 1, z add z
-
-for i assign 1 val 10 do
-   ;y assign 10 add z
-   # Цикл с неизвестной длиной #
-   while z GRT z do
-       ;z assign z disa 1
-       while a LOWT 10 do
-           ;a assign a add 1
-       next
-   next
-next
-;displ y add 2, z disa 1, z add z
-
-for i assign 1 val 10 do
-   ;y assign 10 add z
-   # Цикл с неизвестной длиной #
-   while z GRT z do
-       ;z assign z disa 1
-       while a LOWT 10 do
-           ;a assign a add 1
-       next
-   next
-next
-;displ y add 2, z disa 1, z add z
-
-for i assign 1 val 10 do
-   ;y assign 10 add z
-   # Цикл с неизвестной длиной #
-   while z GRT z do
-       ;z assign z disa 1
-       while a LOWT 10 do
-           ;a assign a add 1
-       next
-   next
-next
-;displ y add 2, z disa 1, z add z
-
-for i assign 1 val 10 do
-   ;y assign 10 add z
-   # Цикл с неизвестной длиной #
-   while z GRT z do
-       ;z assign z disa 1
-       while a LOWT 10 do
-           ;a assign a add 1
-       next
-   next
-next
-;displ y add 2, z disa 1, z add z
-
-for i assign 1 val 10 do
-   ;y assign 10 add z
-   # Цикл с неизвестной длиной #
-   while z GRT z do
-       ;z assign z disa 1
-       while a LOWT 10 do
-           ;a assign a add 1
-       next
-   next
-next
-;displ y add 2, z disa 1, z add z
-
-for i assign 1 val 10 do
-   ;y assign 10 add z
-   # Цикл с неизвестной длиной #
-   while z GRT z do
-       ;z assign z disa 1
-       while a LOWT 10 do
-           ;a assign a add 1
-       next
-   next
-next
-;displ y add 2, z disa 1, z add z
-
-for i assign 1 val 10 do
-   ;y assign 10 add z
-   # Цикл с неизвестной длиной #
-   while z GRT z do
-       ;z assign z disa 1
-       while a LOWT 10 do
-           ;a assign a add 1
-       next
-   next
-next
-;displ y add 2, z disa 1, z add z
-
-for i assign 1 val 10 do
-   ;y assign 10 add z
-   # Цикл с неизвестной длиной #
-   while z GRT z do
-       ;z assign z disa 1
-       while a LOWT 10 do
-           ;a assign a add 1
-       next
-   next
-next
-;displ y add 2, z disa 1, z add z
-
-for i assign 1 val 10 do
-   ;y assign 10 add z
-   # Цикл с неизвестной длиной #
-   while z GRT z do
-       ;z assign z disa 1
-       while a LOWT 10 do
-           ;a assign a add 1
-       next
-   next
-next
-;displ y add 2, z disa 1, z add z
-
-for i assign 1 val 10 do
-   ;y assign 10 add z
-   # Цикл с неизвестной длиной #
-   while z GRT z do
-       ;z assign z disa 1
-       while a LOWT 10 do
-           ;a assign a add 1
-       next
-   next
-next
-;displ y add 2, z disa 1, z add z
-
-for i assign 1 val 10 do
-   ;y assign 10 add z
-   # Цикл с неизвестной длиной #
-   while z GRT z do
-       ;z assign z disa 1
-       while a LOWT 10 do
-           ;a assign a add 1
-       next
-   next
-next
-;displ y add 2, z disa 1, z add z
-
-for i assign 1 val 10 do
-   ;y assign 10 add z
-   # Цикл с неизвестной длиной #
-   while z GRT z do
-       ;z assign z disa 1
-       while a LOWT 10 do
-           ;a assign a add 1
-       next
-   next
-next
-;displ y add 2, z disa 1, z add z
-
-for i assign 1 val 10 do
-   ;y assign 10 add z
-   # Цикл с неизвестной длиной #
-   while z GRT z do
-       ;z assign z disa 1
-       while a LOWT 10 do
-           ;a assign a add 1
-       next
-   next
-next
-;displ y add 2, z disa 1, z add z
-
-for i assign 1 val 10 do
-   ;y assign 10 add z
-   # Цикл с неизвестной длиной #
-   while z GRT z do
-       ;z assign z disa 1
-       while a LOWT 10 do
-           ;a assign a add 1
-       next
-   next
-next
-;displ y add 2, z disa 1, z add z
-
-for i assign 1 val 10 do
-   ;y assign 10 add z
-   # Цикл с неизвестной длиной #
-   while z GRT z do
-       ;z assign z disa 1
-       while a LOWT 10 do
-           ;a assign a add 1
-       next
-   next
-next
-;displ y add 2, z disa 1, z add z
-
-
+;displ y | 2, z - 1, z | z
 ;displ y
 end..

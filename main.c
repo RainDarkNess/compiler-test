@@ -7,7 +7,7 @@
 
 struct var {
     char name[1024];
-    unsigned char value[1024];
+    char value[1024];
     char type[1024];
     bool isNull;
 };
@@ -32,7 +32,7 @@ char words[4][1024][1024] = {{ // types
                                      {'-', '-'}, // 9
                                      {"-"}, // 10 "-"
                                      {'+', '+'}, // 11
-                                     {"+"}, // 12 "+"
+                                     {"|"}, // 12 "+"
                                      {"*"}, // 13 "*"
                                      {"/"}, // 14 "/"
                                      {"then"}, // 15
@@ -598,7 +598,7 @@ char peek(Stack *s) {
 
 int precedence(char op) {
     switch (op) {
-        case '+':
+        case '|':
         case '-':
             return 1;
         case '*':
@@ -617,9 +617,7 @@ void infixToPostfix(const char *infix, char *postfix) {
     int i, j = 0;
 
     for (i = 0; infix[i] != '\0'; i++) {
-        if(!isalnum(infix[i]) && i != 0){
-            postfix[j++] = ' ';
-        }
+
         if (isalnum(infix[i])) {
             postfix[j++] = infix[i]; // Если операнд, добавляем в выходную строку
         } else if (infix[i] == '(') {
@@ -630,6 +628,7 @@ void infixToPostfix(const char *infix, char *postfix) {
             }
             pop(&s); // Удаляем '(' из стека
         }else { // Оператор
+            postfix[j++] = ' ';
             while (!isEmpty(&s) && precedence(peek(&s)) >= precedence(infix[i])) {
                 postfix[j++] = pop(&s);
             }
@@ -643,33 +642,51 @@ void infixToPostfix(const char *infix, char *postfix) {
     postfix[j] = '\0'; // Завершаем строку
 }
 
+void get_buffer_from_token(const char *tokens, char* _buffer, char* _buffer2){
+    char buffer[2][100];
+    memset(buffer, 0, sizeof(buffer));
+    bool first = true;
+    int j = 0;
+    for (int i = 0; tokens[i] != '\0'; i++) {
+        if (tokens[i] == ',') {
+            first = false;
+            j = 0;
+            continue;
+        }
+        if (first)buffer[0][j] = tokens[i];
+        else buffer[1][j] = tokens[i];
+        j++;
+    }
+    j = 0;
+    strcpy(_buffer, buffer[0]);
+    strcpy(_buffer2, buffer[1]);
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 bool code_work() {
 
     char *result = (char *) malloc(13 * sizeof(char));
-    char *template = (char *) malloc(13 * sizeof(char));
-    memset(result, '\0', sizeof((char *) malloc(13 * sizeof(char))));
-    memset(template, '\0', sizeof((char *) malloc(13 * sizeof(char))));
+    char template[1024];
+
+    memset(template, '\0', sizeof(template));
 
     strcat(result, ".data\n");
 
     // init variables
     for (int i = 0; i < vars_count; i++) {
-        sprintf(template, "\t%s: .%s 0\n", def_vars[i].name, "quad");
+        sprintf(template, "\t%s: .%s %s\n", def_vars[i].name, "quad", def_vars[i].value);
         strcat(result, template);
+        memset(template, '\0', sizeof(template));
+
     }
-    strcat(result, "\t.def\tmain;\t.scl\t2;\t.type\t32;\t.endef\t\n.seh_proc\tmain\n");
+    strcat(result, "\t.def\tmain;\t.scl\t2;\t.type\t32;\t.endef\n");
 
     // Init main function program
     strcat(result, "main:\n"
                    "\tpushq\t%rbp\n"
-                   "\t.seh_pushreg\t%rbp\n"
                    "\tmovq\t%rsp, %rbp\n"
-                   "\t.seh_setframe\t%rbp, 0\n"
-                   "\tsubq\t$48, %rsp\n"
-                   "\t.seh_stackalloc\t48\n");
+                   "\tsubq\t$48, %rsp\n");
 
     // IMPORTANT COMMENTS
 
@@ -678,57 +695,235 @@ bool code_work() {
     char *tokens = strtok(map_2, ";");
 
     bool is_condition_start = false;
-    bool is_condition = false;
-    char infix[MAX], postfix[MAX];
-    while (tokens != NULL) {
+    bool begin_find = false;
+    char stack[1024];
+    memset(stack, '\0', sizeof(stack));
 
-        if (strcmp(tokens, "1,0") == 0) {
-            is_condition_start = true;
+    char infix[MAX], postfix[MAX];
+    memset(postfix, '\0', sizeof(postfix));
+    memset(infix, '\0', sizeof(infix));
+
+    sprintf(template, "\tmov $0, %rax\n"
+                      "\tmov $0, %rbx\n");
+    strcat(result, template);
+
+    while (tokens != NULL) {
+        if(strcmp(tokens, "1,5") == 0) {
+            begin_find = true;
             tokens = strtok(NULL, ";");
-            memset(infix, '\0', sizeof(infix));
-            memset(postfix, '\0', sizeof(postfix));
+            tokens = strtok(NULL, ";");
         }
-        if (is_condition_start) {
-            bool first = true;
+        if(begin_find) {
             char buffer[2][100];
-            memset(buffer, 0, sizeof(buffer));
-            int j = 0;
-            for (int i = 0; tokens[i] != '\0'; i++) {
-                if (tokens[i] == ',') {
-                    first = false;
-                    j = 0;
-                    continue;
-                }
-                if (first)buffer[0][j] = tokens[i];
-                else buffer[1][j] = tokens[i];
-                j++;
-            }
-            j = 0;
-            if (is_condition) {
+            memset(buffer[0], '\0', sizeof(buffer[0]));
+            memset(buffer[1], '\0', sizeof(buffer[1]));
+
+
+            if (is_condition_start) {
+
                 if (strcmp(tokens, "1,1") == 0) {
                     is_condition_start = false;
-
                     infix[strcspn(infix, "\n")] = 0;
                     infixToPostfix(infix, postfix);
                     printf("Val: %s\n", postfix);
+                    char stack_asm[100][100];
+                    memset(stack_asm, '\0', sizeof(stack_asm));
 
+                    int index_stack = 1;
+                    int v_index = 0;
+
+                    memset(template, '\0', sizeof(template));
+                    bool was_val = false;
+                    for(int j = 0; *(postfix + j); j++){
+                        if(isalnum(postfix[j])){
+                            stack_asm[index_stack][v_index] = postfix[j];
+                            was_val = true;
+                            v_index++;
+                        }else{
+                            if(postfix[j] == '|'){
+                                if(was_val) {
+                                    if (strcmp(stack_asm[1], "") != 0) {
+                                        sprintf(template, "\tadd $%s, %crax\n", stack_asm[1], '%');
+                                        strcat(result, template);
+                                        memset(template, '\0', sizeof(template));
+                                    }
+                                    if (strcmp(stack_asm[2], "") != 0) {
+                                        sprintf(template, "\tadd $%s, %crax\n", stack_asm[2], '%');
+                                        strcat(result, template);
+                                        memset(template, '\0', sizeof(template));
+
+                                        sprintf(template, "\tadd %rax, %rbx\n"
+                                                                        "\tmov $0, %rax\n");
+                                        strcat(result, template);
+                                        memset(template, '\0', sizeof(template));
+
+                                    }
+                                    was_val = false;
+                                }else{
+                                    sprintf(template, "\tadd %crax, %crbx\n"
+                                                                    "\tmov $0, %rax\n", '%', '%');
+                                    strcat(result, template);
+                                    memset(template, '\0', sizeof(template));
+                                }
+                                index_stack = 0;
+                                memset(stack_asm, '\0', sizeof(stack_asm));
+                            }else if(postfix[j] == '*'){
+                                if(was_val) {
+                                    if (strcmp(stack_asm[1], "") != 0 && strcmp(stack_asm[2], "") == 0) {
+                                        sprintf(template, "\tmov $%s, %crax\n", stack_asm[1], '%');
+                                        strcat(result, template);
+                                        memset(template, '\0', sizeof(template));
+
+                                        sprintf(template, "\tmul %crcx\n"
+                                                                        "\tadd %crax, %crbx\n"
+                                                                        "\tmov $0, %rax\n", '%');
+                                        strcat(result, template);
+                                        memset(template, '\0', sizeof(template));
+                                    } else {
+                                        if (strcmp(stack_asm[1], "") != 0) {
+                                            sprintf(template, "\tadd $%s, %crax\n", stack_asm[1], '%');
+                                            strcat(result, template);
+                                            memset(template, '\0', sizeof(template));
+                                        }
+                                        if (strcmp(stack_asm[2], "") != 0) {
+                                            sprintf(template, "\tmov $%s, %crcx\n", stack_asm[2], '%');
+                                            strcat(result, template);
+                                            memset(template, '\0', sizeof(template));
+                                            sprintf(template, "\tmul %crcx\n       "
+                                                                            "\tadd %rax, %rbx\n "
+                                                                            "\tmov $0, %rax\n   ");
+                                            strcat(result, template);
+                                            memset(template, '\0', sizeof(template));
+                                        }
+                                    }
+                                    was_val = false;
+                                }else{
+                                    sprintf(template, "\tadd %rax, %rbx\n"
+                                                      "\tmov $0, %rax\n");
+                                    strcat(result, template);
+                                    memset(template, '\0', sizeof(template));
+                                }
+                                memset(stack_asm, '\0', sizeof(stack_asm));
+                                index_stack = 0;
+                            }else if(postfix[j] == '/'){
+                                if(was_val) {
+                                    if (strcmp(stack_asm[1], "") != 0 && strcmp(stack_asm[2], "") == 0) {
+                                        sprintf(template, "\tmov $%s, %crax\n", stack_asm[1], '%');
+                                        strcat(result, template);
+                                        memset(template, '\0', sizeof(template));
+
+                                        sprintf(template, "\tdiv %rcx\n"
+                                                          "\txor %rdx, %rdx\n",
+                                                          "\tadd %rax, %rbx\n"
+                                                          "\tmov $0, %rax\n");
+                                        strcat(result, template);
+                                        memset(template, '\0', sizeof(template));
+                                    } else {
+                                        if (strcmp(stack_asm[1], "") != 0) {
+                                            sprintf(template, "\tadd $%s, %crax\n", stack_asm[1], '%');
+                                            strcat(result, template);
+                                            memset(template, '\0', sizeof(template));
+                                        }
+                                        if (strcmp(stack_asm[2], "") != 0) {
+                                            sprintf(template, "\tmov $%s, %crcx\n", stack_asm[2], '%');
+                                            strcat(result, template);
+                                            memset(template, '\0', sizeof(template));
+                                            sprintf(template,"\tdiv %rcx\n"
+                                                                           "\txor %rdx, %rdx\n"
+                                                                           "\tadd %rax, %rbx\n "
+                                                                           "\tmov $0, %rax\n   ");
+                                            strcat(result, template);
+                                            memset(template, '\0', sizeof(template));
+                                        }
+                                    }
+                                    was_val = false;
+                                }else{
+                                    sprintf(template, "\tadd %crax, %crbx\n"
+                                                      "\tmov $0, %rax\n");
+                                    strcat(result, template);
+                                    memset(template, '\0', sizeof(template));
+                                }
+                                memset(stack_asm, '\0', sizeof(stack_asm));
+                                index_stack = 0;
+                            }else if(postfix[j] == '-'){
+
+                                if(was_val) {
+                                    if (strcmp(stack_asm[1], "") != 0 && strcmp(stack_asm[2], "") == 0) {
+                                        sprintf(template, "\tmov $%s, %crax\n"
+                                                          "\tsub %rax, %rbx\n"
+                                                          "\tmov $0, %rax\n", stack_asm[1], '%');
+                                        strcat(result, template);
+                                        memset(template, '\0', sizeof(template));
+
+                                    }else {
+                                        if (strcmp(stack_asm[1], "") != 0) {
+                                            sprintf(template, "\tmov $%s, %rax\n", stack_asm[1]);
+                                            strcat(result, template);
+                                            memset(template, '\0', sizeof(template));
+                                        }
+                                        if (strcmp(stack_asm[2], "") != 0) {
+                                            sprintf(template, "\tmov $%s, %crbx\n"
+                                                              "\tsub %rax, %rbx\n"
+                                                              "\tmov $0, %rax\n", stack_asm[2], '%');
+                                            strcat(result, template);
+                                            memset(template, '\0', sizeof(template));
+                                        }
+                                    }
+                                    was_val = false;
+                                }else{
+                                    sprintf(template, "\tsub %rax, %rbx\n"
+                                                                    "\tmov $0, %rax\n");
+                                    strcat(result, template);
+                                    memset(template, '\0', sizeof(template));
+                                }
+                                memset(stack_asm, '\0', sizeof(stack_asm));
+                                index_stack = 0;
+                            }
+                            index_stack++;
+                            v_index = 0;
+                        }
+                    }
+
+                    memset(stack, '\0', sizeof(stack));
                     memset(infix, '\0', sizeof(infix));
                     memset(postfix, '\0', sizeof(postfix));
+                    tokens = strtok(NULL, ";");
                 }
+                get_buffer_from_token(tokens, buffer[0], buffer[1]);
+                strcat(infix, words[atoi(buffer[0])][atoi(buffer[1])]);
             }
-            if (strcmp(tokens, "1,10") == 0 || strcmp(tokens, "1,12") == 0 || strcmp(tokens, "1,13") == 0 ||
-                strcmp(tokens, "1,14") == 0) {
-                is_condition = true;
+
+            if (strcmp(tokens, "1,0") == 0) {
+                is_condition_start = true;
+                memset(template, '\0', sizeof((char *) malloc(13 * sizeof(char))));
+
+//            sprintf(template, "\tmovq %s(%crip), %crax\n", words[atoi(buffer[0])][atoi(buffer[1])], '%', '%');
+
+                memset(infix, '\0', sizeof(infix));
+                memset(postfix, '\0', sizeof(postfix));
             }
-            strcat(infix, words[atoi(buffer[0])][atoi(buffer[1])]);
-            int a = 1;
+
+//            sprintf(template, "\tmovq a(%rip), %rax\n"
+//                              "\tmovq\t%rax, -8(%rbp)\n"
+//                              "\tmovq\t-8(%rbp), %rax", );
+//        }
+            get_buffer_from_token(tokens, buffer[0], buffer[1]);
+
+//            strcat(stack, words[atoi(buffer[0])][atoi(buffer[1])]);
+            strcat(stack, tokens);
+            strcat(stack, ";");
         }
         tokens = strtok(NULL, ";");
-
     }
-    strcat(result, "\n\t.seh_endprologue\t\n\tret\n\t.seh_endproc\n");
-//    fclose(fopen("asm.s", "w"));
-//    file_write("asm.s", result);
+
+    strcat(result, "\tmov %rbx, %rax\n"
+                   "\tmovl\t$0, %eax\n"
+                   "\taddq\t$48, %rsp\n"
+                   "\tpopq\t%rbp\n"
+                   "\n"
+                   "\tret");
+    fclose(fopen("asm.s", "w"));
+    file_write("asm.s", result);
 
     return false;
 }
@@ -1078,6 +1273,7 @@ bool syntax_check(char _map[]) {
                                            def_vars[j].value);
                                     var_find_eq = true;
                                     found_val_or_var = true;
+//                                    continue;
                                 } else {
                                     printf("Error. Value of var: %s is undefined\n", def_vars[j].name);
                                     not_error = false;
@@ -1094,6 +1290,7 @@ bool syntax_check(char _map[]) {
                     } else if (strcmp(table_number, "2") == 0) { // Var value check
                         found_val_or_var = true;
                         printf("_FIND_ VALUE IS %s\n", words[atoi(table_number)][atoi(table_val)]);
+//                        continue;
                     }
 
                     if (strcmp(table_number, "1") == 0 && strcmp(table_val, "7") != 0 && strcmp(table_val, "8") != 0 &&

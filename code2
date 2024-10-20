@@ -2,6 +2,6 @@ program var
 a:int;
 begin
 ;a assign 1
-;a assign (1 + 1) * 2
+;a assign 10 | 1 | 10 | 50 - 15 / 20
 ;displ a
 end..
