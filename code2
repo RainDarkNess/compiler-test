@@ -1,7 +1,7 @@
 program var
-a:int;
+a:float;
 begin
-;a assign 1
-;a assign 10 | 1 | 10 | 50 - 15 / 20
+:a assign 655.2
+;a assign 25 | 123 * 24 / 10
 ;displ a
 end..
