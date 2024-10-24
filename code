@@ -20,7 +20,7 @@ testBool:bool;
 y:float;
 
 # Объявление нескольких переменных #
-test,test1,test2:float;
+test,test1,test2:int;
 
 # Начало работы программы #
 begin
@@ -35,7 +35,7 @@ begin
 # Использование научной записи #
 ;test assign 1.23E-1
 ;test1 assign 1.23E1
-;test2 assign 1.23E+1
+;test2 assign 123E2
 
 # 16тиричная запись #
 ;a assign 1ABFFFh
