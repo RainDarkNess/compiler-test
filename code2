@@ -1,7 +1,13 @@
 program var
-a:float;
+af2w,y:int;
 begin
-:a assign 85.1
-;a assign 123 * 24.3 / 10
-;displ a
+;y assign 10
+;af2w assign y
+;af2w assign af2w * 24 | 10 - 1
+
+;if y GRT af2w then
+   ;y assign 10 - 1
+;end
+
+;displ af2w
 end..

@@ -679,10 +679,11 @@ void get_buffer_from_token(const char *tokens, char* _buffer, char* _buffer2){
 
 bool code_work() {
 
-    char *result = (char *) malloc(13 * sizeof(char));
+    char *result = (char *) malloc(1024+sizeof(char*));
     char template[1024];
 
     memset(template, '\0', sizeof(template));
+    memset(result, '\0', 1024+sizeof(char*));
 
     strcat(result, ".text\n"
                                 ".globl\tmain\n");
@@ -711,6 +712,8 @@ bool code_work() {
 
     bool is_condition_start = false;
     bool begin_find = false;
+    bool has_oper = false;
+    bool has_then = false;
     char stack[1024];
     memset(stack, '\0', sizeof(stack));
 
@@ -719,6 +722,8 @@ bool code_work() {
     memset(infix, '\0', sizeof(infix));
 
 
+    char variable[1024];
+    memset(variable, '\0', sizeof(variable));
 
     while (tokens != NULL) {
         if(strcmp(tokens, "1,5") == 0) {
@@ -738,7 +743,7 @@ bool code_work() {
                     is_condition_start = false;
                     infix[strcspn(infix, "\n")] = 0;
                     infixToPostfix(infix, postfix);
-                    printf("Val: %s\n", postfix);
+                    printf("Val:%s\n", postfix);
                     char stack_asm[100][100];
                     memset(stack_asm, '\0', sizeof(stack_asm));
 
@@ -748,232 +753,291 @@ bool code_work() {
                     memset(template, '\0', sizeof(template));
                     bool was_val = false;
                     bool was_del = false;
-                    for(int j = 0; *(postfix + j); j++){
-                        if(isalnum(postfix[j])){
-                            if(was_del) {
-                                index_stack++;
-                                was_del = false;
-                            }
-                            stack_asm[index_stack][v_index] = postfix[j];
-                            was_val = true;
-                            v_index++;
-
-                        }else{
-                            if(postfix[j] == '|'){
-                                if(was_val) {
-                                    if (strcmp(stack_asm[index_stack-1], "") != 0) {
-                                        sprintf(template, "\tadd $0x%s, %crax\n", stack_asm[index_stack-1], '%');
-                                        strcat(result, template);
-                                        memset(template, '\0', sizeof(template));
+                    bool has_condition = false;
+                    for (int i = 0; *(postfix + i); ++i) {
+                        if(postfix[i] == '|' || postfix[i] == '-' || postfix[i] == '*' || postfix[i] == '/'){
+                            has_condition = true;
+                        }
+                    }
+                    if(has_condition){
+                        for (int j = 0; *(postfix + j); j++) {
+                            if (isdigit(postfix[j])) {
+                                if (was_del) {
+                                    for(int i = 0; i< strlen(stack_asm[index_stack]); i++){
+                                        if(!isdigit(stack_asm[index_stack][i])){
+                                            strcat(stack_asm[index_stack], "(%rip)");
+                                            break;
+                                        }
                                     }
-                                    if (strcmp(stack_asm[index_stack-0], "") != 0) {
-                                        sprintf(template, "\tadd $0x%s, %crax\n", stack_asm[index_stack-0], '%');
-                                        strcat(result, template);
-                                        memset(template, '\0', sizeof(template));
-
-                                        sprintf(template, "\tadd %rax, %rbx\n"
-                                                                        "\tmov $0, %rax\n");
-                                        strcat(result, template);
-                                        memset(template, '\0', sizeof(template));
-
-                                    }
-                                    index_stack -= 2;
-                                    memset(stack_asm[index_stack-0], '\0', sizeof(stack_asm[index_stack-0]));
-                                    memset(stack_asm[index_stack-1], '\0', sizeof(stack_asm[index_stack-1]));
-                                    was_val = false;
-                                }else{
-                                    if(strcmp(stack_asm[index_stack], "") != 0){
-                                        sprintf(template, "\tadd $0x%s, %rbx\n"
-                                                          "\tmov $0, %rax\n", stack_asm[index_stack]);
-                                        strcat(result, template);
-                                        memset(template, '\0', sizeof(template));
-                                    }
-                                    sprintf(template, "\tadd %rax, %rbx\n", stack_asm[index_stack]);
-                                    strcat(result, template);
-                                    memset(template, '\0', sizeof(template));
+                                    index_stack++;
+                                    was_del = false;
+                                    stack_asm[index_stack][v_index++] = '$';
                                 }
-//                                memset(stack_asm, '\0', sizeof(stack_asm));
-                            }else if(postfix[j] == '*'){
-                                if(was_val) {
-                                    if (strcmp(stack_asm[index_stack-0], "") != 0 && strcmp(stack_asm[index_stack-1], "") == 0) {
-                                        sprintf(template, "\tmov $0x%s, %rax\n", stack_asm[index_stack-1]);
-                                        strcat(result, template);
-                                        memset(template, '\0', sizeof(template));
+                                stack_asm[index_stack][v_index] = postfix[j];
+                                was_val = true;
+                                v_index++;
 
-                                        sprintf(template,"\tmul %rcx\n"
-                                                                        "\tadd %rax, %rbx\n"
-                                                                        "\tmov $0, %rax\n");
-                                        strcat(result, template);
-                                        memset(template, '\0', sizeof(template));
-                                        memset(stack_asm[index_stack-0], '\0', sizeof(stack_asm[index_stack-0]));
-                                        index_stack -= 1;
-                                    } else {
-                                        if (strcmp(stack_asm[index_stack-1], "") != 0) {
-                                            sprintf(template, "\tadd $0x%s, %rax\n", stack_asm[index_stack-1]);
+                            } else {
+                                bool skip = true;
+                                if (postfix[j] == '|') {
+                                    if (was_val) {
+                                        if (strcmp(stack_asm[index_stack - 1], "") != 0) {
+                                            sprintf(template, "\tadd %s, %crax\n", stack_asm[index_stack - 1], '%');
                                             strcat(result, template);
                                             memset(template, '\0', sizeof(template));
                                         }
-                                        if (strcmp(stack_asm[index_stack-0], "") != 0) {
-                                            sprintf(template, "\tmov $0x%s, %rcx\n", stack_asm[index_stack-0]);
+                                        if (strcmp(stack_asm[index_stack - 0], "") != 0) {
+                                            sprintf(template, "\tadd %s, %crax\n", stack_asm[index_stack - 0], '%');
                                             strcat(result, template);
                                             memset(template, '\0', sizeof(template));
-                                            sprintf(template, "\tmul %rcx\n       "
-                                                                            "\tadd %rax, %rbx\n "
-                                                                            "\tmov $0, %rax\n   ");
+
+                                            sprintf(template, "\tadd %rax, %rbx\n"
+                                                              "\tmov $0, %rax\n");
                                             strcat(result, template);
                                             memset(template, '\0', sizeof(template));
+
                                         }
-                                        memset(stack_asm[index_stack-0], '\0', sizeof(stack_asm[index_stack-0]));
-                                        memset(stack_asm[index_stack-1], '\0', sizeof(stack_asm[index_stack-1]));
+                                        memset(stack_asm[index_stack - 0], '\0', sizeof(stack_asm[index_stack - 0]));
+                                        memset(stack_asm[index_stack - 1], '\0', sizeof(stack_asm[index_stack - 1]));
                                         index_stack -= 2;
-                                    }
-                                    was_val = false;
-                                }else{
-                                    sprintf(template, "\tadd %rax, %rbx\n"
-                                                      "\tmov $0, %rax\n");
-                                    strcat(result, template);
-                                    memset(template, '\0', sizeof(template));
-                                }
-                                //memset(stack_asm, '\0', sizeof(stack_asm));
-                                //index_stack -= 2;
-                            }else if(postfix[j] == '/'){
-                                if(was_val) {
-                                    if (strcmp(stack_asm[index_stack-0], "") != 0 && strcmp(stack_asm[index_stack-1], "") == 0) {
-                                        sprintf(template, "\tmov $0x%s, %crax\n", stack_asm[index_stack-0], '%');
+                                        was_val = false;
+                                    } else {
+                                        if (strcmp(stack_asm[index_stack], "") != 0) {
+                                            sprintf(template, "\tadd %s, %rbx\n"
+                                                              "\tmov $0, %rax\n", stack_asm[index_stack]);
+                                            strcat(result, template);
+                                            memset(template, '\0', sizeof(template));
+                                        }
+                                        sprintf(template, "\tadd %rax, %rbx\n", stack_asm[index_stack]);
                                         strcat(result, template);
                                         memset(template, '\0', sizeof(template));
+                                    }
+//                                memset(stack_asm, '\0', sizeof(stack_asm));
+                                } else if (postfix[j] == '*') {
+                                    if (was_val) {
+                                        if (strcmp(stack_asm[index_stack - 0], "") != 0 &&
+                                            strcmp(stack_asm[index_stack - 1], "") == 0) {
+                                            sprintf(template, "\tmov %s, %rax\n", stack_asm[index_stack - 1]);
+                                            strcat(result, template);
+                                            memset(template, '\0', sizeof(template));
 
-                                        sprintf(template, "\tmov %rbx, %rcx\n"
-                                                          "\tcmp $0, %rcx\n"
-                                                          "\tje division_by_zero\n"
-                                                          "\tdiv %rcx\n"
-                                                          "\txor %rdx, %rdx\n"
-                                                          "\tmov $0, %rcx\n"
-                                                          "\tadd %rax, %rbx\n"
+                                            sprintf(template, "\tmul %rcx\n"
+                                                              "\tadd %rax, %rbx\n"
+                                                              "\tmov $0, %rax\n");
+                                            strcat(result, template);
+                                            memset(template, '\0', sizeof(template));
+                                            memset(stack_asm[index_stack - 0], '\0',
+                                                   sizeof(stack_asm[index_stack - 0]));
+                                            index_stack -= 1;
+                                        } else {
+                                            if (strcmp(stack_asm[index_stack - 1], "") != 0) {
+                                                sprintf(template, "\tadd %s, %rax\n", stack_asm[index_stack - 1]);
+                                                strcat(result, template);
+                                                memset(template, '\0', sizeof(template));
+                                            }
+                                            if (strcmp(stack_asm[index_stack - 0], "") != 0) {
+                                                sprintf(template, "\tmov %s, %rcx\n", stack_asm[index_stack - 0]);
+                                                strcat(result, template);
+                                                memset(template, '\0', sizeof(template));
+                                                sprintf(template, "\tmul %rcx\n"
+                                                                  "\tadd %rax, %rbx\n"
+                                                                  "\tmov $0, %rax\n");
+                                                strcat(result, template);
+                                                memset(template, '\0', sizeof(template));
+                                            }
+                                            memset(stack_asm[index_stack - 0], '\0',
+                                                   sizeof(stack_asm[index_stack - 0]));
+                                            memset(stack_asm[index_stack - 1], '\0',
+                                                   sizeof(stack_asm[index_stack - 1]));
+                                            index_stack -= 2;
+                                        }
+                                        was_val = false;
+                                    } else {
+                                        sprintf(template, "\tadd %rax, %rbx\n"
                                                           "\tmov $0, %rax\n");
                                         strcat(result, template);
                                         memset(template, '\0', sizeof(template));
-                                        memset(stack_asm[index_stack-0], '\0', sizeof(stack_asm[index_stack-0]));
-                                        index_stack -= 1;
-                                    } else {
-                                        if (strcmp(stack_asm[index_stack-1], "") != 0) {
-                                            sprintf(template, "\tadd $0x%s, %rax\n", stack_asm[index_stack-1]);
+                                    }
+                                    //memset(stack_asm, '\0', sizeof(stack_asm));
+                                    //index_stack -= 2;
+                                } else if (postfix[j] == '/') {
+                                    if (was_val) {
+                                        if (strcmp(stack_asm[index_stack - 0], "") != 0 &&
+                                            strcmp(stack_asm[index_stack - 1], "") == 0) {
+                                            sprintf(template, "\tmov %s, %crax\n", stack_asm[index_stack - 0], '%');
                                             strcat(result, template);
                                             memset(template, '\0', sizeof(template));
-                                        }
-                                        if (strcmp(stack_asm[index_stack-0], "") != 0) {
-                                            sprintf(template, "\tmov $0x%s, %rcx\n", stack_asm[index_stack-0]);
+
+                                            sprintf(template, "\tmov %rbx, %rcx\n"
+                                                              "\tcmp $0, %rcx\n"
+                                                              "\tje division_by_zero\n"
+                                                              "\tdiv %rcx\n"
+                                                              "\txor %rdx, %rdx\n"
+                                                              "\tmov $0, %rcx\n"
+                                                              "\tadd %rax, %rbx\n"
+                                                              "\tmov $0, %rax\n");
                                             strcat(result, template);
                                             memset(template, '\0', sizeof(template));
-                                            sprintf(template,"\tcmp $0, %rcx\n"
-                                                                            "\tje division_by_zero\n"
-                                                                            "\txor %rdx, %rdx\n"
-                                                                            "\tdiv %rcx\n"
+                                            memset(stack_asm[index_stack - 0], '\0',
+                                                   sizeof(stack_asm[index_stack - 0]));
+                                            index_stack -= 1;
+                                        } else {
+                                            if (strcmp(stack_asm[index_stack - 1], "") != 0) {
+                                                sprintf(template, "\tadd %s, %rax\n", stack_asm[index_stack - 1]);
+                                                strcat(result, template);
+                                                memset(template, '\0', sizeof(template));
+                                            }
+                                            if (strcmp(stack_asm[index_stack - 0], "") != 0) {
+                                                sprintf(template, "\tmov %s, %rcx\n", stack_asm[index_stack - 0]);
+                                                strcat(result, template);
+                                                memset(template, '\0', sizeof(template));
+                                                sprintf(template, "\tcmp $0, %rcx\n"
+                                                                  "\tje division_by_zero\n"
+                                                                  "\txor %rdx, %rdx\n"
+                                                                  "\tdiv %rcx\n"
 //                                                                           "\tadd %rax, %rbx\n "
 //                                                                           "\tmov $0, %rax\n   "
-                                                                           );
+                                                );
+                                                strcat(result, template);
+                                                memset(template, '\0', sizeof(template));
+                                            }
+                                            memset(stack_asm[index_stack - 0], '\0',
+                                                   sizeof(stack_asm[index_stack - 0]));
+                                            memset(stack_asm[index_stack - 1], '\0',
+                                                   sizeof(stack_asm[index_stack - 1]));
+                                            index_stack -= 2;
+                                        }
+                                        was_val = false;
+                                    } else {
+                                        if (strcmp(stack_asm[index_stack], "") != 0) {
+                                            sprintf(template, "mov %rbx, %rax"
+                                                              "\tmov %s, %rcx\n"
+                                                              "\tcmp $0, %rcx\n"
+                                                              "\tje division_by_zero\n"
+                                                              "\txor %rdx, %rdx\n"
+                                                              "\tmov %rax, %rbx\n"
+                                                              "\tmov $0, %rax\n", stack_asm[index_stack]);
                                             strcat(result, template);
                                             memset(template, '\0', sizeof(template));
                                         }
-                                        memset(stack_asm[index_stack-0], '\0', sizeof(stack_asm[index_stack-0]));
-                                        memset(stack_asm[index_stack-1], '\0', sizeof(stack_asm[index_stack-1]));
-                                        index_stack -= 2;
-                                    }
-                                    was_val = false;
-                                }else{
-                                    if(strcmp(stack_asm[index_stack], "") != 0){
-                                        sprintf(template, "mov %rbx, %rax"
-                                                          "\tmov $0x%s, %rcx\n"
-                                                          "\tcmp $0, %rcx\n"
-                                                          "\tje division_by_zero\n"
-                                                          "\txor %rdx, %rdx\n"
-                                                          "\tmov %rax, %rbx\n"
-                                                          "\tmov $0, %rax\n", stack_asm[index_stack]);
-                                        strcat(result, template);
-                                        memset(template, '\0', sizeof(template));
-                                    }
 //                                    sprintf(template, "\tadd %rax, %rbx\n", stack_asm[index_stack]);
 //                                    strcat(result, template);
 //                                    memset(template, '\0', sizeof(template));
 
-                                    sprintf(template, "\tadd %crax, %crbx\n"
-                                                      "\tmov $0, %rax\n");
-                                    strcat(result, template);
-                                    memset(template, '\0', sizeof(template));
-                                }
-                                //memset(stack_asm, '\0', sizeof(stack_asm));
-                                memset(stack_asm[index_stack-0], '\0', sizeof(stack_asm[index_stack-0]));
-                                memset(stack_asm[index_stack-1], '\0', sizeof(stack_asm[index_stack-1]));
-                                index_stack -= 2;
-                            }else if(postfix[j] == '-'){
-
-                                if(was_val) {
-                                    if (strcmp(stack_asm[index_stack-0], "") != 0 && strcmp(stack_asm[index_stack-1], "") == 0) {
-                                        sprintf(template, "\tmov $0x%s, %crax\n"
-                                                          "\tsub %rax, %rbx\n"
-                                                          "\tmov $0, %rax\n", stack_asm[index_stack-0], '%');
+                                        sprintf(template, "\tadd %crax, %crbx\n"
+                                                          "\tmov $0, %rax\n");
                                         strcat(result, template);
                                         memset(template, '\0', sizeof(template));
-                                        memset(stack_asm[index_stack-0], '\0', sizeof(stack_asm[index_stack-0]));
-                                        index_stack -= 1;
-
-                                    }else {
-                                        if (strcmp(stack_asm[index_stack-1], "") != 0) {
-                                            sprintf(template, "\tmov $0x%s, %rax\n", stack_asm[index_stack-1]);
-                                            strcat(result, template);
-                                            memset(template, '\0', sizeof(template));
-                                        }
-                                        if (strcmp(stack_asm[index_stack-0], "") != 0) {
-                                            sprintf(template, "\tmov $0x%s, %crbx\n"
-                                                              "\tsub %rax, %rbx\n"
-                                                              "\tmov $0, %rax\n", stack_asm[index_stack-0], '%');
-                                            strcat(result, template);
-                                            memset(template, '\0', sizeof(template));
-                                        }
-                                        memset(stack_asm[index_stack-0], '\0', sizeof(stack_asm[index_stack-0]));
-                                        memset(stack_asm[index_stack-1], '\0', sizeof(stack_asm[index_stack-1]));
-                                        index_stack -= 2;
                                     }
-                                    was_val = false;
-                                }else{
-                                    sprintf(template, "\tsub %rax, %rbx\n"
-                                                                    "\tmov $0, %rax\n");
-                                    strcat(result, template);
-                                    memset(template, '\0', sizeof(template));
-                                }
-                                //memset(stack_asm, '\0', sizeof(stack_asm));
-                                index_stack -= 2;
-                            }else if(postfix[j] == ' '){
-//                                index_stack++;
-                            }else{
-                                stack_asm[index_stack][v_index] = postfix[j];
-                                was_val = true;
-                                v_index++;
-                            }
-                            v_index = 0;
-                            was_del = true;
-                        }
-                    }
+                                    //memset(stack_asm, '\0', sizeof(stack_asm));
+                                    memset(stack_asm[index_stack - 0], '\0', sizeof(stack_asm[index_stack - 0]));
+                                    memset(stack_asm[index_stack - 1], '\0', sizeof(stack_asm[index_stack - 1]));
+                                    index_stack -= 2;
+                                } else if (postfix[j] == '-') {
 
-                    memset(stack, '\0', sizeof(stack));
-                    memset(infix, '\0', sizeof(infix));
-                    memset(postfix, '\0', sizeof(postfix));
-                    tokens = strtok(NULL, ";");
+                                    if (was_val) {
+                                        if (strcmp(stack_asm[index_stack - 0], "") != 0 &&
+                                            strcmp(stack_asm[index_stack - 1], "") == 0) {
+                                            sprintf(template, "\tmov %s, %crax\n"
+                                                              "\tsub %rax, %rbx\n"
+                                                              "\tmov $0, %rax\n", stack_asm[index_stack - 0], '%');
+                                            strcat(result, template);
+                                            memset(template, '\0', sizeof(template));
+                                            memset(stack_asm[index_stack - 0], '\0',
+                                                   sizeof(stack_asm[index_stack - 0]));
+                                            index_stack -= 1;
+
+                                        } else {
+                                            if (strcmp(stack_asm[index_stack - 1], "") != 0) {
+                                                sprintf(template, "\tmov %s, %rax\n", stack_asm[index_stack - 1]);
+                                                strcat(result, template);
+                                                memset(template, '\0', sizeof(template));
+                                            }
+                                            if (strcmp(stack_asm[index_stack - 0], "") != 0) {
+                                                sprintf(template, "\tmov %s, %crbx\n"
+                                                                  "\tsub %rax, %rbx\n"
+                                                                  "\tmov $0, %rax\n", stack_asm[index_stack - 0], '%');
+                                                strcat(result, template);
+                                                memset(template, '\0', sizeof(template));
+                                            }
+                                            memset(stack_asm[index_stack - 0], '\0',
+                                                   sizeof(stack_asm[index_stack - 0]));
+                                            memset(stack_asm[index_stack - 1], '\0',
+                                                   sizeof(stack_asm[index_stack - 1]));
+                                            index_stack -= 2;
+                                        }
+                                        was_val = false;
+                                    } else {
+                                        sprintf(template, "\tsub %rax, %rbx\n"
+                                                          "\tmov $0, %rax\n");
+                                        strcat(result, template);
+                                        memset(template, '\0', sizeof(template));
+                                    }
+                                    //memset(stack_asm, '\0', sizeof(stack_asm));
+                                    index_stack -= 2;
+                                } else if (postfix[j] == ' ') {
+//                                index_stack++;
+                                } else {
+                                    stack_asm[index_stack][v_index] = postfix[j];
+                                    was_val = true;
+                                    v_index++;
+                                    skip = false;
+                                }
+                                if (skip) {
+                                    v_index = 0;
+                                    was_del = true;
+                                }
+                            }
+                        }
+                        if(!has_oper) {
+                            sprintf(template, "\tmov %crbx, %s(%rip)\n"
+                                              "\tmov $0, %rbx\n", '%', variable);
+                            strcat(result, template);
+                            memset(template, '\0', sizeof(template));
+                        }else{
+                            sprintf(template, "\tmov %rbx, %rax\n"
+                                              "\tmov $0, %rbx\n");
+                            strcat(result, template);
+                            memset(template, '\0', sizeof(template));
+                        }
+    //                    memset(variable, '\0', sizeof(variable));
+
+                        memset(stack, '\0', sizeof(stack));
+                        memset(infix, '\0', sizeof(infix));
+                        memset(postfix, '\0', sizeof(postfix));
+                        tokens = strtok(NULL, ";");
+                    }else{
+                        char* str_ch;
+                        if(isdigit(*postfix)){
+                            sprintf(str_ch, "\tmov $%s, %rax\n", postfix);
+                        }else{
+                            sprintf(str_ch, "\tmov %s(%rip), %rax\n", postfix);
+                        }
+                        sprintf(template, "%s\tmov %crax, %s(%rip)\n"
+                                                        "\tmov $0, %rax\n", str_ch, '%', variable);
+                        strcat(result, template);
+                        memset(template, '\0', sizeof(template));
+                    }
                 }
                 get_buffer_from_token(tokens, buffer[0], buffer[1]);
                 strcat(infix, words[atoi(buffer[0])][atoi(buffer[1])]);
+            }else{
+                if(strcmp(tokens, "1,0")!=0) {
+                    get_buffer_from_token(tokens, buffer[0], buffer[1]);
+                    strcpy(variable, words[atoi(buffer[0])][atoi(buffer[1])]);
+                }
             }
 
             if (strcmp(tokens, "1,0") == 0) {
                 is_condition_start = true;
                 memset(template, '\0', sizeof((char *) malloc(13 * sizeof(char))));
-
-//            sprintf(template, "\tmovq %s(%crip), %crax\n", words[atoi(buffer[0])][atoi(buffer[1])], '%', '%');
-
                 memset(infix, '\0', sizeof(infix));
                 memset(postfix, '\0', sizeof(postfix));
             }
-
+            if (strcmp(tokens, "1,6") == 0) {
+                has_oper = true;
+                is_condition_start = true;
+            }
 //            sprintf(template, "\tmovq a(%rip), %rax\n"
 //                              "\tmovq\t%rax, -8(%rbp)\n"
 //                              "\tmovq\t-8(%rbp), %rax", );
@@ -988,7 +1052,7 @@ bool code_work() {
     }
 
 
-    strcat(result, "\tmov %rbx, %rax\n"
+    strcat(result,
                    "\tmovl\t$0, %eax\n"
                    "\taddq\t$48, %rsp\n"
                    "\tpopq\t%rbp\n"

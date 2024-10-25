@@ -1,6 +1,11 @@
 int main(){
-    float a = 1.3;
-    int b = 1;
-    int c =  a * b;
+    int a = 0;
+    int b = 2;
+    for(int i = 0; i < 10; i++){
+        a++;
+    }
+    if(a<b){
+        a++;
+    }
     return 0;
 }
