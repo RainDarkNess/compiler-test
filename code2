@@ -1,13 +1,9 @@
 program var
 af2w,y:int;
 begin
-;y assign 10
-;af2w assign y
-;af2w assign af2w * 24 | 10 - 1
-
-;if y GRT af2w then
-   ;y assign 10 - 1
-;end
-
-;displ af2w
+;y assign 100
+;for i assign 10 val 10 do
+    ;af2w assign y | 2
+;next
+;displ y
 end..

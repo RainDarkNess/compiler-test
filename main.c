@@ -676,11 +676,12 @@ void get_buffer_from_token(const char *tokens, char* _buffer, char* _buffer2){
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+int block_count = 0;
 
 bool code_work() {
 
     char *result = (char *) malloc(1024+sizeof(char*));
-    char template[1024];
+    char template[200];
 
     memset(template, '\0', sizeof(template));
     memset(result, '\0', 1024+sizeof(char*));
@@ -713,8 +714,14 @@ bool code_work() {
     bool is_condition_start = false;
     bool begin_find = false;
     bool has_oper = false;
-    bool has_then = false;
-    char stack[1024];
+    bool has_next = false;
+    bool has_val_code = false;
+
+    char tmp_block_name[20];
+    char tmp_block_next_name[20];
+    memset(tmp_block_name, '\0', sizeof(tmp_block_name));
+
+    char stack[100];
     memset(stack, '\0', sizeof(stack));
 
     char infix[MAX], postfix[MAX];
@@ -722,7 +729,7 @@ bool code_work() {
     memset(infix, '\0', sizeof(infix));
 
 
-    char variable[1024];
+    char variable[100];
     memset(variable, '\0', sizeof(variable));
 
     while (tokens != NULL) {
@@ -738,8 +745,8 @@ bool code_work() {
 
 
             if (is_condition_start) {
-
-                if (strcmp(tokens, "1,1") == 0) {
+//                                   ;                             val                            do
+                if (strcmp(tokens, "1,1") == 0 || strcmp(tokens, "1,19") == 0 || strcmp(tokens, "1,20") == 0) {
                     is_condition_start = false;
                     infix[strcspn(infix, "\n")] = 0;
                     infixToPostfix(infix, postfix);
@@ -752,7 +759,7 @@ bool code_work() {
 
                     memset(template, '\0', sizeof(template));
                     bool was_val = false;
-                    bool was_del = false;
+                    bool was_del = true;
                     bool has_condition = false;
                     for (int i = 0; *(postfix + i); ++i) {
                         if(postfix[i] == '|' || postfix[i] == '-' || postfix[i] == '*' || postfix[i] == '/'){
@@ -764,7 +771,7 @@ bool code_work() {
                             if (isdigit(postfix[j])) {
                                 if (was_del) {
                                     for(int i = 0; i< strlen(stack_asm[index_stack]); i++){
-                                        if(!isdigit(stack_asm[index_stack][i])){
+                                        if(!isdigit(stack_asm[index_stack][i]) && stack_asm[index_stack][i] != '$'){
                                             strcat(stack_asm[index_stack], "(%rip)");
                                             break;
                                         }
@@ -989,34 +996,35 @@ bool code_work() {
                                 }
                             }
                         }
-                        if(!has_oper) {
+//                        if(!has_oper) {
                             sprintf(template, "\tmov %crbx, %s(%rip)\n"
                                               "\tmov $0, %rbx\n", '%', variable);
                             strcat(result, template);
                             memset(template, '\0', sizeof(template));
-                        }else{
-                            sprintf(template, "\tmov %rbx, %rax\n"
-                                              "\tmov $0, %rbx\n");
-                            strcat(result, template);
-                            memset(template, '\0', sizeof(template));
-                        }
-    //                    memset(variable, '\0', sizeof(variable));
+//                        }else{
+//                            sprintf(template, "\tmov %rbx, %rax\n"
+//                                              "\tmov $0, %rbx\n");
+//                            strcat(result, template);
+//                            memset(template, '\0', sizeof(template));
+//                        }
+//                    memset(variable, '\0', sizeof(variable));
 
                         memset(stack, '\0', sizeof(stack));
                         memset(infix, '\0', sizeof(infix));
                         memset(postfix, '\0', sizeof(postfix));
                         tokens = strtok(NULL, ";");
                     }else{
-                        char* str_ch;
-                        if(isdigit(*postfix)){
-                            sprintf(str_ch, "\tmov $%s, %rax\n", postfix);
-                        }else{
-                            sprintf(str_ch, "\tmov %s(%rip), %rax\n", postfix);
-                        }
-                        sprintf(template, "%s\tmov %crax, %s(%rip)\n"
-                                                        "\tmov $0, %rax\n", str_ch, '%', variable);
-                        strcat(result, template);
-                        memset(template, '\0', sizeof(template));
+                        // ??????????????
+//                        char str_ch[50];
+//                        if(isdigit(*postfix)){
+//                            sprintf(str_ch, "\tmov $%s, %rax\n", postfix);
+//                        }else{
+//                            sprintf(str_ch, "\tmov %s(%rip), %rax\n", postfix);
+//                        }
+//                        sprintf(template, "%s\tmov %crax, %s(%rip)\n"
+//                                                        "\tmov $0, %rax\n", str_ch, '%', variable);
+//                        strcat(result, template);
+//                        memset(template, '\0', sizeof(template));
                     }
                 }
                 get_buffer_from_token(tokens, buffer[0], buffer[1]);
@@ -1025,6 +1033,7 @@ bool code_work() {
                 if(strcmp(tokens, "1,0")!=0) {
                     get_buffer_from_token(tokens, buffer[0], buffer[1]);
                     strcpy(variable, words[atoi(buffer[0])][atoi(buffer[1])]);
+                    int a =1;
                 }
             }
 
@@ -1034,9 +1043,85 @@ bool code_work() {
                 memset(infix, '\0', sizeof(infix));
                 memset(postfix, '\0', sizeof(postfix));
             }
-            if (strcmp(tokens, "1,6") == 0) {
+            //                   if                             for
+            if (strcmp(tokens, "1,6") == 0 || strcmp(tokens, "1,18") == 0) {
                 has_oper = true;
-                is_condition_start = true;
+            }
+
+            if(has_oper){
+                get_buffer_from_token(tokens, buffer[0], buffer[1]);
+                if(strcmp(tokens, "1,15")==0){ // THEN
+                    sprintf(tmp_block_name, "b%d", block_count);
+                    sprintf(tmp_block_next_name, "n%d", block_count++);
+                    sprintf(template, "\tcmp %crax, %crbx\n"
+                                      "\tje %s\n",'%','%', tmp_block_name);
+                    strcat(result, template);
+                    memset(template, '\0', sizeof(template));
+
+                    sprintf(template, "\t%s:\n", tmp_block_name);
+                    strcat(result, template);
+                    memset(template, '\0', sizeof(template));
+                    memset(tmp_block_name, '\0', sizeof(tmp_block_name));
+                }
+                if (strcmp(buffer[0], "3") == 0) {
+                    if(!has_next) {
+                        sprintf(template, "\tmov $0, %crax\n"
+                                          "\tadd %s(%rip), %rax\n", '%', words[atoi(buffer[0])][atoi(buffer[1])]);
+                        strcat(result, template);
+                        memset(template, '\0', sizeof(template));
+                        has_next = true;
+                    }else{
+                        sprintf(template, "\tmov $0, %crbx\n"
+                                          "\tadd %s(%rip), %rbx\n", '%', words[atoi(buffer[0])][atoi(buffer[1])]);
+                        strcat(result, template);
+                        memset(template, '\0', sizeof(template));
+                        has_next = false;
+                    }
+                }
+
+                if(strcmp(tokens, "1,30")==0){
+                    sprintf(template, "\t%s:\n", tmp_block_next_name);
+                    strcat(result, template);
+                    memset(template, '\0', sizeof(template));
+                    memset(tmp_block_next_name, '\0', sizeof(tmp_block_next_name));
+                }
+
+                if(strcmp(tokens, "1,19")==0){ // DETECT VAL
+
+                    tokens = strtok(NULL, ";");
+                    get_buffer_from_token(tokens, buffer[0], buffer[1]);
+                    if(strcmp(buffer[0], "3")==0){
+                        sprintf(template, "\tmov %s(%rip), %rcx\n", words[atoi(buffer[0])][atoi(buffer[1])]);
+                        strcat(result, template);
+                        memset(template, '\0', sizeof(template));
+                    }else if(strcmp(buffer[0], "2")==0){
+                        sprintf(template, "\tmov $%s, %rcx\n", words[atoi(buffer[0])][atoi(buffer[1])]);
+                        strcat(result, template);
+                        memset(template, '\0', sizeof(template));
+                    }
+
+                    sprintf(tmp_block_name, "b%d", block_count);
+                    sprintf(tmp_block_next_name, "n%d", block_count++);
+
+                    sprintf(template, "\t%s:\n", tmp_block_name);
+                    strcat(result, template);
+                    memset(template, '\0', sizeof(template));
+
+
+                    sprintf(template, "\tcmp %s(%crip), %crcx\n"
+                                                    "\tjg %s\n"
+                                                    "\tadd $1, %s(%crip)\n", variable, '%', '%', tmp_block_next_name, variable, '%');
+                    strcat(result, template);
+                    memset(template, '\0', sizeof(template));
+
+                }
+                if(strcmp(tokens, "1,22")==0){ // DETECT NEXT
+                    sprintf(template, "\tjmp %s\n"
+                                                    "\t%s:\n", tmp_block_name, tmp_block_next_name);
+                    strcat(result, template);
+                    memset(template, '\0', sizeof(template));
+                }
+
             }
 //            sprintf(template, "\tmovq a(%rip), %rax\n"
 //                              "\tmovq\t%rax, -8(%rbp)\n"
@@ -1522,6 +1607,9 @@ bool syntax_check(char _map[]) {
                             not_error = false;
                             break;
                         }
+                    } else if (strcmp(table_number, "2") == 0) { // Var value check
+                        var_find_if = true;
+                        printf("_FIND VALUE IS %s\n", words[atoi(table_number)][atoi(table_val)]);
                     }
                     if (strcmp(table_number, "1") == 0) {
                         if (strcmp(table_val, "2") == 0) { // condition in if
@@ -1538,7 +1626,6 @@ bool syntax_check(char _map[]) {
                         } else if (strcmp(table_val, "4") == 0) {
                             printf("FIND '<'\n");
                             has_condition_if = true;
-                            var_find_if = false;
                             if (var_find_if) {
                                 var_find_if = false;
                             } else {
@@ -1644,9 +1731,10 @@ bool syntax_check(char _map[]) {
                         printf("ASSIGN FIND IN FOR\n");
                         continue;
                     } else if ((strcmp(table_number, "2") == 0)) {
-                        char *tmp_value_in_for = number_validation(words[atoi(table_number)][atoi(table_val)]);
-                        printf("VALUE FOUND '%s'.\n", tmp_value_in_for);
-                        strcpy(def_vars[vars_count].value, tmp_value_in_for);
+                        // TEMPORARY
+//                        char *tmp_value_in_for = number_validation(words[atoi(table_number)][atoi(table_val)]);
+                        printf("VALUE FOUND '%s'.\n", words[atoi(table_number)][atoi(table_val)]);
+                        strcpy(def_vars[vars_count].value, words[atoi(table_number)][atoi(table_val)]);
 //                        free(tmp_value_in_for);
                         vars_count++;
                         has_equaling = true;
@@ -1657,7 +1745,7 @@ bool syntax_check(char _map[]) {
                         bool var_find = false;
                         for (int j = 0; j < 1024; j++) {
                             if (strcmp(def_vars[j].name, words[3][atoi(table_val)]) == 0) {
-                                if (!def_vars[j].isNull) {
+                                if (def_vars[j].isNull) {
                                     printf("VAR %s FIND IN NEW VALUE ADDING. VALUE IS %s\n", def_vars[j].name,
                                            def_vars[j].value);
                                     var_find_cycle = true;
@@ -1707,6 +1795,7 @@ bool syntax_check(char _map[]) {
             }
         }
     }
+//    free(tokens);
     if (is_cycle) {
         printf("Error. 'Next' after cycle not found.\n");
         not_error = false;
