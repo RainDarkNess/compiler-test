@@ -1,12 +1,12 @@
 program var
-af2w,y:int;
+af2w,y, z:int;
 begin
 ;y assign 100
-;for i assign 1 val 10 do
-    ;af2w assign y | 2
+;z assign 10
+
+;while z GRE 100 do
+;   z assign z - 1
 ;next
-;if y GRE af2w then
-;   y assign y | 2
-;end
+
 ;displ y
 end..
