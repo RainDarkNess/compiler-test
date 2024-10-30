@@ -715,7 +715,7 @@ bool code_work() {
     bool begin_find = false;
     bool has_oper = false;
     bool has_next = false;
-    bool has_val_code = false;
+    bool cycle_for = false;
 
     char tmp_block_name[20];
     char tmp_block_next_name[20];
@@ -789,12 +789,12 @@ bool code_work() {
                                 if (postfix[j] == '|') {
                                     if (was_val) {
                                         if (strcmp(stack_asm[index_stack - 1], "") != 0) {
-                                            sprintf(template, "\tadd %s, %crax\n", stack_asm[index_stack - 1], '%');
+                                            sprintf(template, "\tmov %s, %rax\n", stack_asm[index_stack - 1]);
                                             strcat(result, template);
                                             memset(template, '\0', sizeof(template));
                                         }
                                         if (strcmp(stack_asm[index_stack - 0], "") != 0) {
-                                            sprintf(template, "\tadd %s, %crax\n", stack_asm[index_stack - 0], '%');
+                                            sprintf(template, "\tmov %s, %rbx\n", stack_asm[index_stack - 0]);
                                             strcat(result, template);
                                             memset(template, '\0', sizeof(template));
 
@@ -838,7 +838,7 @@ bool code_work() {
                                             index_stack -= 1;
                                         } else {
                                             if (strcmp(stack_asm[index_stack - 1], "") != 0) {
-                                                sprintf(template, "\tadd %s, %rax\n", stack_asm[index_stack - 1]);
+                                                sprintf(template, "\tmov %s, %rax\n", stack_asm[index_stack - 1]);
                                                 strcat(result, template);
                                                 memset(template, '\0', sizeof(template));
                                             }
@@ -1046,6 +1046,16 @@ bool code_work() {
             //                   if                             for
             if (strcmp(tokens, "1,6") == 0 || strcmp(tokens, "1,18") == 0) {
                 has_oper = true;
+                if(strcmp(tokens, "1,18") == 0)
+                    cycle_for = true;
+            }
+
+            //                 end
+            if(strcmp(tokens, "1,30")==0){
+                sprintf(template, "\t%s:\n", tmp_block_next_name);
+                strcat(result, template);
+                memset(template, '\0', sizeof(template));
+                memset(tmp_block_next_name, '\0', sizeof(tmp_block_next_name));
             }
 
             if(has_oper){
@@ -1062,40 +1072,35 @@ bool code_work() {
                     strcat(result, template);
                     memset(template, '\0', sizeof(template));
                     memset(tmp_block_name, '\0', sizeof(tmp_block_name));
+                    has_oper = false;
                 }
-                if (strcmp(buffer[0], "3") == 0) {
-                    if(!has_next) {
-                        sprintf(template, "\tmov $0, %crax\n"
-                                          "\tadd %s(%rip), %rax\n", '%', words[atoi(buffer[0])][atoi(buffer[1])]);
-                        strcat(result, template);
-                        memset(template, '\0', sizeof(template));
-                        has_next = true;
-                    }else{
-                        sprintf(template, "\tmov $0, %crbx\n"
-                                          "\tadd %s(%rip), %rbx\n", '%', words[atoi(buffer[0])][atoi(buffer[1])]);
-                        strcat(result, template);
-                        memset(template, '\0', sizeof(template));
-                        has_next = false;
+                if(!cycle_for) {
+                    if (strcmp(buffer[0], "3") == 0) {
+                        if (!has_next) {
+                            sprintf(template, "\tcmp %s(%rip)", words[atoi(buffer[0])][atoi(buffer[1])]);
+                            strcat(result, template);
+                            memset(template, '\0', sizeof(template));
+                            has_next = true;
+                        } else {
+                            sprintf(template, ", %s(%rip)\n", words[atoi(buffer[0])][atoi(buffer[1])]);
+                            strcat(result, template);
+                            memset(template, '\0', sizeof(template));
+                            has_next = false;
+                        }
                     }
                 }
 
-                if(strcmp(tokens, "1,30")==0){
-                    sprintf(template, "\t%s:\n", tmp_block_next_name);
-                    strcat(result, template);
-                    memset(template, '\0', sizeof(template));
-                    memset(tmp_block_next_name, '\0', sizeof(tmp_block_next_name));
-                }
 
                 if(strcmp(tokens, "1,19")==0){ // DETECT VAL
 
                     tokens = strtok(NULL, ";");
                     get_buffer_from_token(tokens, buffer[0], buffer[1]);
                     if(strcmp(buffer[0], "3")==0){
-                        sprintf(template, "\tmov %s(%rip), %rcx\n", words[atoi(buffer[0])][atoi(buffer[1])]);
+                        sprintf(template, "\tmov %s(%rip), %rbp\n", words[atoi(buffer[0])][atoi(buffer[1])]);
                         strcat(result, template);
                         memset(template, '\0', sizeof(template));
                     }else if(strcmp(buffer[0], "2")==0){
-                        sprintf(template, "\tmov $%s, %rcx\n", words[atoi(buffer[0])][atoi(buffer[1])]);
+                        sprintf(template, "\tmov $%s, %rbp\n", words[atoi(buffer[0])][atoi(buffer[1])]);
                         strcat(result, template);
                         memset(template, '\0', sizeof(template));
                     }
@@ -1108,9 +1113,9 @@ bool code_work() {
                     memset(template, '\0', sizeof(template));
 
 
-                    sprintf(template, "\tcmp %s(%crip), %crcx\n"
+                    sprintf(template, "\tcmp %crbp, %s(%crip)\n"
                                                     "\tjg %s\n"
-                                                    "\tadd $1, %s(%crip)\n", variable, '%', '%', tmp_block_next_name, variable, '%');
+                                                    "\tadd $1, %s(%crip)\n", '%', variable, '%', tmp_block_next_name, variable, '%');
                     strcat(result, template);
                     memset(template, '\0', sizeof(template));
 
@@ -1120,6 +1125,8 @@ bool code_work() {
                                                     "\t%s:\n", tmp_block_name, tmp_block_next_name);
                     strcat(result, template);
                     memset(template, '\0', sizeof(template));
+                    cycle_for = false;
+                    has_oper = false;
                 }
 
             }

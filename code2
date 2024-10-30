@@ -2,8 +2,11 @@ program var
 af2w,y:int;
 begin
 ;y assign 100
-;for i assign 10 val 10 do
+;for i assign 1 val 10 do
     ;af2w assign y | 2
 ;next
+;if y GRE af2w then
+;   y assign y | 2
+;end
 ;displ y
 end..

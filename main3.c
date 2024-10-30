@@ -1,11 +1,10 @@
+#include "stdio.h"
 int main(){
-    int a = 0;
-    int b = 2;
-    for(int i = 0; i < 10; i++){
-        a++;
+    int y = 100;
+    int af2w = 0;
+    for(int i = 1; i < 10; i++){
+        af2w += y + 2;
     }
-    if(a<b){
-        a++;
-    }
+    printf("%d\n", af2w);
     return 0;
 }
