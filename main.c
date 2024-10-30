@@ -687,7 +687,8 @@ bool code_work() {
     memset(result, '\0', 1024+sizeof(char*));
 
     strcat(result, ".text\n"
-                                ".globl\tmain\n");
+                                ".globl\tmain\n"
+                                ".extern printf\n");
     strcat(result, ".data\n");
 
     // init variables
@@ -699,7 +700,11 @@ bool code_work() {
     }
 
     // Init main function program
-    strcat(result, "main:\n"
+    strcat(result, ".LC0:\n"
+                   "\t.ascii \"%d\\n\"\n"
+                   "\t.text\n"
+                   "\t.globl main\n"
+                   "main:\n"
                    "\tpushq\t%rbp\n"
                    "\tmovq\t%rsp, %rbp\n"
                    "\tsubq\t$48, %rsp\n"
@@ -717,6 +722,7 @@ bool code_work() {
     bool has_next = false;
     bool cycle_for = false;
     bool cycle_while = false;
+    bool has_displ = false;
 
     char tmp_block_name[20];
     char tmp_block_next_name[20];
@@ -748,6 +754,7 @@ bool code_work() {
             if (is_condition_start) {
 //                                   ;                             val                            do
                 if (strcmp(tokens, "1,1") == 0 || strcmp(tokens, "1,19") == 0 || strcmp(tokens, "1,20") == 0) {
+                    has_displ = false;
                     is_condition_start = false;
                     infix[strcspn(infix, "\n")] = 0;
                     infixToPostfix(infix, postfix);
@@ -998,7 +1005,7 @@ bool code_work() {
                             }
                         }
 //                        if(!has_oper) {
-                            sprintf(template, "\tmov %crbx, %s(%rip)\n"
+                            sprintf(template, "\tadd %crbx, %s(%rip)\n"
                                               "\tmov $0, %rbx\n", '%', variable);
                             strcat(result, template);
                             memset(template, '\0', sizeof(template));
@@ -1071,7 +1078,7 @@ bool code_work() {
             }
             if(has_oper){
                 get_buffer_from_token(tokens, buffer[0], buffer[1]);
-                if(strcmp(tokens, "1,15")==0 || strcmp(tokens, "1,20")==0){ // THEN OR DO
+                if((strcmp(tokens, "1,15")==0 || strcmp(tokens, "1,20")==0) && !cycle_for){ // THEN OR DO
                     sprintf(tmp_block_name, "b%d", block_count);
                     sprintf(tmp_block_next_name, "n%d", block_count++);
                     sprintf(template, "\tcmp %crax, %crbx\n"
@@ -1161,6 +1168,36 @@ bool code_work() {
 //                              "\tmovq\t%rax, -8(%rbp)\n"
 //                              "\tmovq\t-8(%rbp), %rax", );
 //        }
+        //               display func
+        if(strcmp(tokens, "1,34")==0){
+            has_displ = true;
+        }
+        if(strcmp(tokens, "1,1")==0){
+            has_displ = false;
+        }
+        if(has_displ){
+            bool valid = false;
+            get_buffer_from_token(tokens, buffer[0], buffer[1]);
+            if(strcmp(buffer[0], "3") == 0){
+                valid = true;
+                sprintf(template, "\tmov %s(%rip), %rdx\n", words[atoi(buffer[0])][atoi(buffer[1])]);
+                strcat(result, template);
+                memset(template, '\0', sizeof(template));
+            }else if(strcmp(buffer[0], "2") == 0){
+                valid = true;
+                sprintf(template, "\tmov $%s, %rdx\n", words[atoi(buffer[0])][atoi(buffer[1])]);
+                strcat(result, template);
+                memset(template, '\0', sizeof(template));
+            }
+            if(valid) {
+                sprintf(template, "\tmov $0, %rcx\n"
+                                  "\tlea .LC0(%rip), %rax\n"
+                                  "\tmov %rax, %rcx\n"
+                                  "\tcall printf\n");
+                strcat(result, template);
+                memset(template, '\0', sizeof(template));
+            }
+        }
             get_buffer_from_token(tokens, buffer[0], buffer[1]);
 
 //            strcat(stack, words[atoi(buffer[0])][atoi(buffer[1])]);
