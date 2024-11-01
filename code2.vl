@@ -13,28 +13,12 @@
 program var
 
 # Объявление переменных #
-a:int;
-self:float;
 z:int;
-testBool:bool;
-y:float;
-
-# Объявление нескольких переменных #
-test,test1,test2:int;
 
 # Начало работы программы #
 begin
-;z assign 1.23E11
-;displ z
+;z assign 1
+;z assign 1 | 1
 
-#
-;while 10 GRE z do
-; z assign z | 1
 ;displ z
-;next
-#
-
-;for i assign 1 val 100 do
-; displ i
-;next
 end..

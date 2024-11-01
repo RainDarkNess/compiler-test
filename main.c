@@ -6,7 +6,7 @@
 #include <math.h>
 #include <stdint.h>
 #define FP2BIN_STRING_MAX 1077
-
+#define OBJ_FILE_NAME "myobj.o"
 struct var {
     char name[1024];
     char value[1024];
@@ -785,70 +785,193 @@ void copyFile(const char *sourceFilename, const char *destinationFilename) {
     fclose(destinationFile);
 }
 
-void appendToFile(const char *filename, const void *data, size_t dataSize) {
-    // Открываем файл в режиме добавления (append)
-    FILE *file = fopen(filename, "ab"); // "ab" - бинарный режим добавления
+void writeBytesToFile(const char *hexString, const char *filename) {
+    size_t len = strlen(hexString);
+    unsigned char bytes[len / 3 + 1]; // +1 для завершающего нуля
+    size_t byteCount = 0;
+
+    // Парсим строку
+    for (size_t i = 0; i < len; i += 3) {
+        char byteString[3] = {hexString[i], hexString[i + 1], '\0'};
+        bytes[byteCount++] = (unsigned char)strtol(byteString, NULL, 16);
+    }
+
+    // Открываем файл для добавления в бинарном режиме
+    FILE *file = fopen(filename, "ab");
     if (file == NULL) {
-        perror("Ошибка при открытии файла для добавления");
+        perror("err");
         return;
     }
 
-    // Записываем данные в файл
-    size_t writtenBytes = fwrite(data, 1, dataSize, file);
-    if (writtenBytes != dataSize) {
-        perror("Ошибка при записи в файл");
-    }
+    // Записываем байты в файл
+    fwrite(bytes, sizeof(unsigned char), byteCount, file);
 
     // Закрываем файл
     fclose(file);
+
+    printf("ok\n", byteCount, filename);
 }
 
-int block_count = 0;
-void compile(char* path){
-    // Copy bites from template header
-    copyFile("C:\\Users\\rain\\CLionProjects\\CTest\\template.bin", "myobj.o");
-
-    FILE *file = fopen(path, "r");
+void appendToFile(const char *filename, const void *data, size_t dataSize) {
+    FILE *file = fopen(filename, "ab");
     if (file == NULL) {
-        perror("error");
+        perror("err appendToFile\n");
         return;
     }
 
-    int ch;
-    char buffer[1024];
-    memset(buffer, '\0', 1024);
-    int buff_index = 0;
-    while ((ch = fgetc(file)) != EOF) {
-        if(ch != '\n' && ch != '\t' && ch != ' ' && ch != '%' && ch != ','){
-            buffer[buff_index] = (char)ch;
-            if(strcmp(buffer, "mov") == 0){
-                unsigned char data = 0x48;
-                appendToFile("myobj.o", &data, sizeof(data));
-            }
-            if(strcmp(buffer, "rax") == 0){
-                unsigned char data = 0xb8;
-                appendToFile("myobj.o", &data, sizeof(data));
-            }
-            buff_index++;
-        }else{
-            if(buffer[0] == '$'){
-                for(int i = 1; *(buffer + i); i++){
-                    buffer[i-1] = buffer[i];
-                }
-                char hexval[1024];
-                memset(hexval, '\0', 1024);
-                sprintf(hexval, "%04x", atoi(buffer));
-                appendToFile("myobj.o", &hexval, strlen(hexval));
-            }
-            memset(buffer, '\0', 1024);
-            buff_index = 0;
-        }
+    size_t writtenBytes = fwrite(data, 1, dataSize, file);
+    if (writtenBytes != dataSize) {
+        perror("err appendToFile\n");
     }
 
     fclose(file);
 }
 
+struct hex_values{
+    char name[1024];
+    unsigned char addr;
+    char value[100];
+};
+struct hex_values hex_values_l[1024];
+
+void correct_hex_presentation(char *digit, char* filename){
+    long long decimalNumber = atoll(digit);
+
+    FILE *file = fopen(filename, "ab");
+    if (file == NULL) {
+        perror("Ошибка при открытии файла");
+        return;
+    }
+    unsigned char hex_bytes[2];
+    int num_bytes = 2;
+
+    hex_bytes[0] = (decimalNumber >> 8) & 0xFF;
+    hex_bytes[1] = decimalNumber & 0xFF;
+
+    fwrite(hex_bytes, sizeof(unsigned char), num_bytes, file);
+
+    int padding = 4 - (num_bytes % 4);
+    if (padding < 4) {
+        unsigned char zero_bytes[4] = {0};
+        fwrite(zero_bytes, sizeof(unsigned char), padding, file);
+    }
+    fclose(file);
+
+}
+
+void machine_templates(char *op, char *value, int index_vars){
+    int hex = 0x0;
+    if(strcmp(op, "mov_var_rax") == 0){
+        hex = 0x48;
+        appendToFile(OBJ_FILE_NAME, &hex, 1);
+        hex = 0xc7;
+        appendToFile(OBJ_FILE_NAME, &hex, 1);
+        hex = 0xc0;
+        appendToFile(OBJ_FILE_NAME, &hex, 1);
+    }else if(strcmp(op, "rax_var") == 0){
+        hex = 0x48;
+        appendToFile(OBJ_FILE_NAME, &hex, 1);
+        hex = 0x89;
+        appendToFile(OBJ_FILE_NAME, &hex, 1);
+        hex = 0x05;
+        appendToFile(OBJ_FILE_NAME, &hex, 1);
+        bool found = false;
+        for(int i = 0; i < index_vars; i++){
+            if(strcmp(hex_values_l[i].name, value) == 0){
+                char adr[100];
+                memset(adr, '\0', 100);
+                sprintf(adr, "%d", hex_values_l[i].addr);
+                correct_hex_presentation(adr, OBJ_FILE_NAME);
+                found = true;
+                break;
+            }
+        }
+        if(!found){
+            correct_hex_presentation(value, OBJ_FILE_NAME);
+        }
+    }else if(strcmp(op, "rbx_var") == 0){
+        hex = 0x48;
+        appendToFile(OBJ_FILE_NAME, &hex, 1);
+        hex = 0x89;
+        appendToFile(OBJ_FILE_NAME, &hex, 1);
+        hex = 0x1d;
+        appendToFile(OBJ_FILE_NAME, &hex, 1);
+        bool found = false;
+        for(int i = 0; i < index_vars; i++){
+            if(strcmp(hex_values_l[i].name, value) == 0){
+                char adr[100];
+                memset(adr, '\0', 100);
+                sprintf(adr, "%d", hex_values_l[i].addr);
+                correct_hex_presentation(adr, OBJ_FILE_NAME);
+                found = true;
+                break;
+            }
+        }
+        if(!found){
+            correct_hex_presentation(value, OBJ_FILE_NAME);
+        }
+    }else if(strcmp(op, "add_rbx_rax") == 0){
+        hex = 0x48;
+        appendToFile(OBJ_FILE_NAME, &hex, 1);
+        hex = 0x01;
+        appendToFile(OBJ_FILE_NAME, &hex, 1);
+        hex = 0xC3;
+        appendToFile(OBJ_FILE_NAME, &hex, 1);
+    }
+}
+
+
+int block_count = 0;
+//void compile(char* path){
+//    // Copy bites from template header
+//    copyFile("C:\\Users\\rain\\CLionProjects\\CTest\\template.bin", OBJ_FILE_NAME);
+//
+//    FILE *file = fopen(path, "r");
+//    if (file == NULL) {
+//        perror("error");
+//        return;
+//    }
+//
+//    int ch;
+//    char buffer[1024];
+//    memset(buffer, '\0', 1024);
+//    int buff_index = 0;
+//    while ((ch = fgetc(file)) != EOF) {
+//        if(ch != '\n' && ch != '\t' && ch != ' ' && ch != '%' && ch != ','){
+//            buffer[buff_index] = (char)ch;
+//            if(strcmp(buffer, "mov") == 0){
+//                unsigned char data = 0x48;
+//                appendToFile(OBJ_FILE_NAME, &data, sizeof(data));
+//            }
+//            if(strcmp(buffer, "rax") == 0){
+//                unsigned char data = 0xb8;
+//                appendToFile(OBJ_FILE_NAME, &data, sizeof(data));
+//            }
+//            buff_index++;
+//        }else{
+//            if(buffer[0] == '$'){
+//                for(int i = 1; *(buffer + i); i++){
+//                    buffer[i-1] = buffer[i];
+//                }
+//                char hexval[1024];
+//                memset(hexval, '\0', 1024);
+//                sprintf(hexval, "%04x", atoi(buffer));
+//                appendToFile(OBJ_FILE_NAME, &hexval, strlen(hexval));
+//            }
+//            memset(buffer, '\0', 1024);
+//            buff_index = 0;
+//        }
+//    }
+//
+//    fclose(file);
+//}
+
+
+
+
+
 bool code_work() {
+
 
     char result[4068];
     memset(result, '\0', 4068);
@@ -856,46 +979,108 @@ bool code_work() {
     char template[200];
 
     memset(template, '\0', sizeof(template));
+    char hexval[1024];
+    char hex_str[1024];
 
-    strcat(result, "section .data\n");
+    memset(hexval, '\0', 1024);
+
+//    copyFile("C:\\Users\\rain\\CLionProjects\\CTest\\template.bin", OBJ_FILE_NAME);
+
+
+    // init variables
+    int index_vars = 0;
+    int max_hex_addr = 0x0;
+    printf("adress | value | name \n");
+    for (int i = 0; i < vars_count; i++) {
+            if (strcmp(def_vars[i].value, "true") == 0) {
+
+                strcpy(hex_values_l[index_vars].name, def_vars[i].name);
+                hex_values_l[index_vars].addr = max_hex_addr;
+                strcpy(hex_values_l[index_vars].value, "01");
+                max_hex_addr+=8;
+                printf("%x | %s | %s\n", hex_values_l[index_vars].addr, hex_values_l[index_vars].value, hex_values_l[index_vars].name);
+                index_vars++;
+            } else if (strcmp(def_vars[i].value, "false") == 0) {
+
+                strcpy(hex_values_l[index_vars].name, def_vars[i].name);
+                hex_values_l[index_vars].addr = max_hex_addr;
+                strcpy(hex_values_l[index_vars].value, "00");
+                max_hex_addr+=8;
+                printf("%x | %s | %s\n", hex_values_l[index_vars].addr, hex_values_l[index_vars].value, hex_values_l[index_vars].name);
+                index_vars++;
+            } else {
+                if(strcmp(def_vars[i].value, "")!=0) {
+                    sprintf(hexval, "%04x", atoi(def_vars[i].value));
+
+                    char *endPtr;
+                    long long decimalNumber = atoll(def_vars[i].value);
+
+                    size_t numBytes = sizeof(decimalNumber);
+
+                    char hex_tmp[1024];
+                    memset(hex_tmp, '\0', 1024);
+                    sprintf(hex_tmp, "%llx", decimalNumber);
+
+                    strcpy(hex_values_l[index_vars].name, def_vars[i].name);
+                    hex_values_l[index_vars].addr = max_hex_addr;
+                    strcpy(hex_values_l[index_vars].value, hex_tmp);
+                    max_hex_addr+=8;
+                    printf("%x | %s | %s\n", hex_values_l[index_vars].addr, hex_values_l[index_vars].value, hex_values_l[index_vars].name);
+                    index_vars++;
+                }else{
+
+                    strcpy(hex_values_l[index_vars].name, def_vars[i].name);
+                    hex_values_l[index_vars].addr = max_hex_addr;
+                    strcpy(hex_values_l[index_vars].value, "00");
+                    max_hex_addr+=8;
+                    printf("%x | %s | %s\n", hex_values_l[index_vars].addr, hex_values_l[index_vars].value, hex_values_l[index_vars].name);
+                    index_vars++;
+                }
+            }
+    }
+    strcat(result, ".text\n"
+                   ".globl\tmain\n"
+                   ".extern printf\n");
+    strcat(result, ".data\n");
 
     // init variables
     for (int i = 0; i < vars_count; i++) {
-            if (strcmp(def_vars[i].value, "true") == 0) {
-                sprintf(template, "\t%s %s %s\n", def_vars[i].name, "dq", "1");
-            } else if (strcmp(def_vars[i].value, "false") == 0) {
-                sprintf(template, "\t%s %s %s\n", def_vars[i].name, "dq", "0");
-            } else {
-                if(strcmp(def_vars[i].value, "")!=0) {
-                    sprintf(template, "\t%s %s %s\n", def_vars[i].name, "dq", def_vars[i].value);
-                }else{
-                    sprintf(template, "\t%s %s %s\n", def_vars[i].name, "dq", "0");
-                }
-            }
+
+        if(strcmp(def_vars[i].value, "true") == 0){
+            sprintf(template, "\t%s: .%s %s\n", def_vars[i].name, "quad", "1");
+        }
+        else if(strcmp(def_vars[i].value, "false") == 0){
+            sprintf(template, "\t%s: .%s %s\n", def_vars[i].name, "quad", "0");
+        }else{
+            sprintf(template, "\t%s: .%s %s\n", def_vars[i].name, "quad", def_vars[i].value);
+        }
+
         strcat(result, template);
         memset(template, '\0', sizeof(template));
 
     }
-    strcat(result, "\tformat_int db \"%lldn\", 0\n");
-    strcat(result, "\tformat_float db \"%fn\", 0\n");
-
-    strcat(result, "section .text\n"
-                                "\tglobal main\n"
-                                "\textern printf\n");
-
 
     // Init main function program
-    strcat(result,"main:\n"
-                   "\tpushq\trbp\n"
-                   "\tmovq\trbp, rsp\n"
-                   "\tsubq\trsp, 48\n"
-                   "\tmov rax, 0\n");
+    strcat(result, ".LC0:\n"
+                   "\t.ascii \"%lld\\n\"\n"
+                   "\t.text\n"
+                   "\t.globl main\n"
+                   ".LC1:\n"
+                   "\t.ascii \"%f\\n\"\n"
+                   "\t.text\n"
+                   "\t.globl main\n"
+                   "main:\n"
+                   "\tpushq\t%rbp\n"
+                   "\tmovq\t%rsp, %rbp\n"
+                   "\tsubq\t$48, %rsp\n"
+                   "\tmov $0, %rax\n");
 
     // IMPORTANT COMMENTS
 
 //    char* string = readFile("C:\\Users\\rain\\CLionProjects\\CTest\\1.txt");
 
     char *tokens = strtok(map_2, ";");
+
 
     bool is_condition_start = false;
     bool begin_find = false;
@@ -946,6 +1131,7 @@ bool code_work() {
                     infixToPostfix(infix, postfix);
                     printf("Val:%s\n", postfix);
                     char stack_asm[100][100];
+                    unsigned char s_a[100];
                     memset(stack_asm, '\0', sizeof(stack_asm));
 
                     int index_stack = 0;
@@ -966,6 +1152,11 @@ bool code_work() {
                                 if (was_del) {
                                     for(int i = 0; i< strlen(stack_asm[index_stack]); i++){
                                         if(!isdigit(stack_asm[index_stack][i]) && stack_asm[index_stack][i] != '$'){
+                                            for(int k = 0; k < index_vars; k++){
+                                                if(strcmp(stack_asm[index_stack], hex_values_l[k].name) == 0){
+                                                    s_a[index_stack] = hex_values_l[k].addr;
+                                                }
+                                            }
                                             strcat(stack_asm[index_stack], "(%rip)");
                                             break;
                                         }
@@ -975,6 +1166,18 @@ bool code_work() {
                                     stack_asm[index_stack][v_index++] = '$';
                                 }
                                 stack_asm[index_stack][v_index] = postfix[j];
+
+                                char new_str[100];
+                                int ind_n_s = 0;
+                                memset(new_str, '\0', 100);
+                                for(int k = 0; k <= v_index; k ++){
+                                    if(isdigit(stack_asm[index_stack][k])){
+                                        new_str[ind_n_s] = stack_asm[index_stack][k];
+                                        ind_n_s++;
+                                    }
+                                }
+                                long long decimalNumber = atoll(new_str);
+                                s_a[index_stack] = decimalNumber;
                                 was_val = true;
                                 v_index++;
 
@@ -986,20 +1189,40 @@ bool code_work() {
                                             sprintf(template, "\tmov %s, %rax\n", stack_asm[index_stack - 1]);
                                             strcat(result, template);
                                             memset(template, '\0', sizeof(template));
+
+                                            char adr[100];
+                                            memset(adr, '\0', 100);
+                                            sprintf(adr, "%d", s_a[index_stack - 1]);
+
+                                            machine_templates("rax_var", adr, index_vars);
+
                                         }
                                         if (strcmp(stack_asm[index_stack - 0], "") != 0) {
                                             sprintf(template, "\tmov %s, %rbx\n", stack_asm[index_stack - 0]);
                                             strcat(result, template);
                                             memset(template, '\0', sizeof(template));
 
+                                            char adr[100];
+                                            memset(adr, '\0', 100);
+                                            sprintf(adr, "%d", s_a[index_stack]);
+
+                                            machine_templates("rbx_var", adr, index_vars);
+
                                             sprintf(template, "\tadd %rax, %rbx\n"
                                                               "\tmov $0, %rax\n");
+
+                                            machine_templates("add_rbx_rax", adr, index_vars);
+                                            machine_templates("mov_var_rax", "", 0);
+                                            correct_hex_presentation("0", OBJ_FILE_NAME);
+
                                             strcat(result, template);
                                             memset(template, '\0', sizeof(template));
+
 
                                         }
                                         memset(stack_asm[index_stack - 0], '\0', sizeof(stack_asm[index_stack - 0]));
                                         memset(stack_asm[index_stack - 1], '\0', sizeof(stack_asm[index_stack - 1]));
+                                        memset(s_a, '\0', 100);
                                         index_stack -= 2;
                                         was_val = false;
                                     } else {
@@ -1195,6 +1418,28 @@ bool code_work() {
                                               "\tmov $0, %rbx\n", '%', variable);
                             strcat(result, template);
                             memset(template, '\0', sizeof(template));
+
+//                        unsigned char hex = 0x48;
+//                        appendToFile(OBJ_FILE_NAME, &hex, 1);
+
+
+//                        for(int k = 0; k < index_vars; k++){
+//                            if(strcmp(hex_values_l[k].name , variable) == 0){
+//                                hex = hex_values_l[k].addr;
+//                                printf("%x address\n", hex);
+//                                appendToFile(OBJ_FILE_NAME, &hex, sizeof(hex));
+//                                break;
+//                            }
+//                        }
+
+//                        hex = 0x48;
+//                        appendToFile(OBJ_FILE_NAME, &hex, 1);
+
+//                        hex = 0x03; //rbx
+//                        appendToFile(OBJ_FILE_NAME, &hex, 1);
+
+//                        hex = 0x00;
+//                        appendToFile(OBJ_FILE_NAME, &hex, 1);
 //                        }else{
 //                            sprintf(template, "\tmov %rbx, %rax\n"
 //                                              "\tmov $0, %rbx\n");
@@ -1214,6 +1459,21 @@ bool code_work() {
                             sprintf(str_ch, "\tmov $%s, %crax\n"
                                                           "\tmov %crax, %s(%crip)\n"
                                                           "\tmov $0, %crax\n", postfix, '%', '%', variable, '%','%');
+
+
+                            memset(hex_str, '\0', 100);
+
+                            machine_templates("mov_var_rax", "", 0);
+                            correct_hex_presentation(postfix, OBJ_FILE_NAME);
+
+                            machine_templates("rax_var", variable, index_vars);
+                            correct_hex_presentation(postfix, OBJ_FILE_NAME);
+
+                            machine_templates("mov_var_rax", "", 0);
+                            correct_hex_presentation("0", OBJ_FILE_NAME);
+
+                            writeBytesToFile(hex_str, OBJ_FILE_NAME);
+
                         }else{
                             sprintf(str_ch, "\tmov %s(%crip), %s(%rip)\n", postfix, '%', variable);
                         }
@@ -1465,7 +1725,7 @@ bool code_work() {
 
     fclose(fopen("asm.s", "w"));
     file_write("asm.s", result);
-    compile("asm.s");
+//    compile("asm.s");
     return true;
 }
 
