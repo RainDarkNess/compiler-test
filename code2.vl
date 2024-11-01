@@ -15,7 +15,7 @@ program var
 # Объявление переменных #
 a:int;
 self:float;
-z:float;
+z:int;
 testBool:bool;
 y:float;
 
@@ -24,7 +24,7 @@ test,test1,test2:int;
 
 # Начало работы программы #
 begin
-;z assign 1.23E11
+;z assign 123o
 ;displ z
 
 #

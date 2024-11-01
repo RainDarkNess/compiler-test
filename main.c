@@ -321,18 +321,39 @@ char *number_validation(char *value) {
 
         double answer_double = 0;
         float answer_float = 0;
-        int answer_int = 0;
+        long long answer_int = 0;
 
         char last_char = value[i];
 
         if (last_char == 'H' || last_char == 'h') {
             printf("Digit is hex \n");
-            answer = hexToBinary(tmp_value);
+            int hex_digit = (int)strtol(tmp_value, NULL, 16);
+            sprintf(tmp_value, "%d", hex_digit);
+            answer = tmp_value;
         } else if (last_char == 'B' || last_char == 'b') {
             printf("Digit is binary \n");
         } else if (last_char == 'O' || last_char == 'o') {
             printf("Digit is oct \n");
-            answer = octToBinary(tmp_value);
+//            answer = octToBinary(tmp_value);
+
+            int oct_digit = 1;
+            int octal = atoi(tmp_value);
+            int temp = octal;
+            int decimalvalue = 0;
+            while (temp)
+            {
+                // Finding the last digit
+                int lastdigit = temp % 10;
+                temp = temp / 10;
+
+                // Multiplying last digit with appropriate
+                // base value and adding it to decimalvalue
+                decimalvalue += lastdigit * oct_digit;
+
+                oct_digit = oct_digit * 8;
+            }
+            sprintf(tmp_value, "%d", decimalvalue);
+            answer = tmp_value;
         } else if (last_char == '.') {
             printf("Error. Real format number not valid\n");
             valid = false;
@@ -348,7 +369,29 @@ char *number_validation(char *value) {
                     answer_double = atof(tmp_value);
                     DoubleUnion du;
                     du.value = answer_double;
+
+                    char test_value[19];
+                    memset(test_value, '\0', 19);
+
+                    sprintf(test_value, "%f", du.value);
                     snprintf(tmp_value, 1024, "%llu", du.value);
+                    bool has_dot = false;
+                    bool is_int = true;
+                    for(int j = 0; j < 19; j++){
+                        if(has_dot){
+                            if(test_value[j] != '0'){
+                                is_int = false;
+                                break;
+                            }
+                        }
+                        if(test_value[j] == '.'){
+                            has_dot = true;
+                        }
+                    }
+                    if(is_int){
+                        answer_int = (long long)(answer_double);
+                        snprintf(tmp_value, 1024, "%lld", answer_int);
+                    }
 //                    snprintf(tmp_value, 10, "%f", answer_double);
                 }
             } else if (is_real) {
@@ -754,7 +797,7 @@ bool code_work() {
 
     // Init main function program
     strcat(result, ".LC0:\n"
-                   "\t.ascii \"%d\\n\"\n"
+                   "\t.ascii \"%lld\\n\"\n"
                    "\t.text\n"
                    "\t.globl main\n"
                    ".LC1:\n"
