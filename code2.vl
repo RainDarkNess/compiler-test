@@ -1,0 +1,40 @@
+# Многострочный комментарий
+
+              , _ ,
+             ( o o )
+            /'` ' `'\
+            |'''''''|
+            |\\'''//|
+               """
+
+Конец многострочного комментария #
+
+# Начало программы #
+program var
+
+# Объявление переменных #
+a:int;
+self:float;
+z:float;
+testBool:bool;
+y:float;
+
+# Объявление нескольких переменных #
+test,test1,test2:int;
+
+# Начало работы программы #
+begin
+;z assign 1.23E11
+;displ z
+
+#
+;while 10 GRE z do
+; z assign z | 1
+;displ z
+;next
+
+;for i assign 1 val 100 do
+; displ i
+;next
+#
+end..

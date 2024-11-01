@@ -77,14 +77,14 @@
 //}
 //
 //int main() {
-//    char code[] = {
+//    char code.vl[] = {
 //            'i', 'n', 't', ' ', 'x', '=', 10, ';',
 //            'f', 'l', 't', ' ', 'y', '=', 5, ';',
 //            'i', 'n', 't', ' ', 'z', '=', 10, ';'
 //    };
-//    int length = sizeof(code) / sizeof(code[0]);
+//    int length = sizeof(code.vl) / sizeof(code.vl[0]);
 //
-//    code_check(code, length);
+//    code_check(code.vl, length);
 //
 //    return 0;
 //}

@@ -5,6 +5,7 @@
 #include <assert.h>
 #include <math.h>
 #include <stdint.h>
+#define FP2BIN_STRING_MAX 1077
 
 struct var {
     char name[1024];
@@ -31,7 +32,7 @@ char words[4][1024][1024] = {{ // types
                                      {'('}, // 7
                                      {')'}, // 8
                                      {'-', '-'}, // 9
-                                     {"-"}, // 10 "-"
+                                     {"!"}, // 10 "-"
                                      {'+', '+'}, // 11
                                      {"|"}, // 12 "+"
                                      {"*"}, // 13 "*"
@@ -220,6 +221,31 @@ char *octToBinary(char oct[]) {
     return binary;
 }
 
+double ieee754ToDouble(uint64_t bits) {
+    uint64_t sign = (bits >> 63) & 0x1;
+    uint64_t exponent = (bits >> 52) & 0x7FF;
+    uint64_t mantissa = bits & 0xFFFFFFFFFFFFF;
+
+    // Вычисление фактической экспоненты
+    int64_t actual_exponent = exponent - 1023;
+
+    // Вычисление мантиссы
+    double mantissa_value = 1.0; // Имплицитная единица
+    for (int i = 0; i < 52; i++) {
+        if (mantissa & (1ULL << (51 - i))) {
+            mantissa_value += (1.0 / (1ULL << (i + 1)));
+        }
+    }
+
+    // Вычисление окончательного значения
+    double result = (sign ? -1 : 1) * mantissa_value * (1ULL << actual_exponent);
+    return result;
+}
+
+typedef union {
+    double value;
+    uint64_t bits;
+} DoubleUnion;
 
 char *number_validation(char *value) {
 
@@ -245,7 +271,7 @@ char *number_validation(char *value) {
             exponential_write_exp = true;
         }
         if (value[i] == '+' || value[i] == '-') {
-            printf("Plus find...Exponential read.\n");
+            printf("Plus or Minus find...Exponential read.\n");
             if (exponential_write_exp)
                 exponential_write_plus = true;
             else
@@ -280,8 +306,8 @@ char *number_validation(char *value) {
                 }
             }
         }else{
-            if (value[i] == '.') {
-                printf("Error. Find dot after exp\n");
+            if ((value[i] == '.' || !isdigit(value[i])) && value[i] != 'E' && value[i] != '+' && value[i] != '-') {
+                printf("Error. Find not digit value after exp\n");
                 return "false_verification";
             }
         }
@@ -316,21 +342,29 @@ char *number_validation(char *value) {
             if (exponential_write_exp) {
                 if(is_hex){
                     answer_double = atof(tmp_value);
-                    snprintf(tmp_value, 10, "%a", answer_double);
+                    snprintf(tmp_value, 10, "%f", answer_double);
                 }else{
-                    answer_int = atoi(tmp_value);
-                    snprintf(tmp_value, 10, "%x", answer_int);
+//                    answer_int = atoi(tmp_value);
+                    answer_double = atof(tmp_value);
+                    DoubleUnion du;
+                    du.value = answer_double;
+                    snprintf(tmp_value, 1024, "%llu", du.value);
+//                    snprintf(tmp_value, 10, "%f", answer_double);
                 }
             } else if (is_real) {
+
                 answer_float = strtof(tmp_value, &endptr_l);
-                snprintf(tmp_value, 10, "%a", answer_float);
+                DoubleUnion du;
+                du.value = answer_float;
+                snprintf(tmp_value, 1024, "%llu", du.value);
+
+                printf("Double: %lf\n", du.value);
+                printf("Bits: %llu\n", du.bits);
             } else {
                 answer_int = atoi(tmp_value);
-                snprintf(tmp_value, 10, "%b", answer_int);
+                snprintf(tmp_value, 1024, "%d", answer_int);
             }
-//            printf("Digit is decimal \n");
-//            answer = decToBinary(tmp_value);
-//            answer = decToBinary(tmp_value, strlen(tmp_value));
+
             answer = tmp_value;
         }
     }
@@ -453,37 +487,46 @@ void reverseBytes(const char *input, char *output, int len) {
 }
 
 
-const char *check_type_data(const char *value) {
+const char *check_type_data(char *value) {
     const char *type_data = "int";
     if (strcmp(value, "true") == 0 || strcmp(value, "false") == 0) {
         type_data = "bool";
         return type_data;
 
     }
-//
-//    int len = strlen(value);
-//    char ascii[len / 2 + 1];
-//    char littleEndian[len + 1];
-//
-//    // Преобразование в ASCII
-//
-//    // TEMPORARY
-//    hexToAscii(value, ascii);
-//    printf("ASCII: %s\n", ascii);
-//
-//    value = ascii;
+    double test = 0.0;
+    if(strlen(value)>=19){
+        char *endptr;
+        test  = ieee754ToDouble(strtoull(value, &endptr, 10));
+        char test_value[19];
+        memset(test_value, '\0', 19);
 
+        sprintf(test_value, "%f", test);
+        bool has_dot = false;
+        printf("Double detected: %f\n", test);
+        for(int i = 0; i < 19; i++){
+            if(has_dot){
+                if(test_value[i] != '0'){
+                    return "float";
+                }
+            }
+            if(test_value[i] == '.'){
+                has_dot = true;
+            }
+        }
+        return "int";
+    }
 
     if (strcmp(value, "true") == 0 || strcmp(value, "false") == 0) {
-        type_data = "bool";
+        return "bool";
     }
 
-    for (int i = 0; *(value + i); i++) {
-        if (value[i] == '.') {
-            type_data = "float";
-            break;
-        }
-    }
+//    for (int i = 0; *(value + i); i++) {
+//        if (value[i] == '.') {
+//            type_data = "float";
+//            break;
+//        }
+//    }
     return type_data;
 }
 
@@ -612,7 +655,7 @@ char peek(Stack *s) {
 int precedence(char op) {
     switch (op) {
         case '|':
-        case '-':
+        case '!':
             return 1;
         case '*':
         case '/':
@@ -680,11 +723,12 @@ int block_count = 0;
 
 bool code_work() {
 
-    char *result = (char *) malloc(1024+sizeof(char*));
+    char result[4068];
+    memset(result, '\0', 4068);
+
     char template[200];
 
     memset(template, '\0', sizeof(template));
-    memset(result, '\0', 1024+sizeof(char*));
 
     strcat(result, ".text\n"
                                 ".globl\tmain\n"
@@ -693,7 +737,16 @@ bool code_work() {
 
     // init variables
     for (int i = 0; i < vars_count; i++) {
-        sprintf(template, "\t%s: .%s %s\n", def_vars[i].name, "quad", def_vars[i].value);
+
+        if(strcmp(def_vars[i].value, "true") == 0){
+            sprintf(template, "\t%s: .%s %s\n", def_vars[i].name, "quad", "1");
+        }
+        else if(strcmp(def_vars[i].value, "false") == 0){
+            sprintf(template, "\t%s: .%s %s\n", def_vars[i].name, "quad", "0");
+        }else{
+            sprintf(template, "\t%s: .%s %s\n", def_vars[i].name, "quad", def_vars[i].value);
+        }
+
         strcat(result, template);
         memset(template, '\0', sizeof(template));
 
@@ -702,6 +755,10 @@ bool code_work() {
     // Init main function program
     strcat(result, ".LC0:\n"
                    "\t.ascii \"%d\\n\"\n"
+                   "\t.text\n"
+                   "\t.globl main\n"
+                   ".LC1:\n"
+                   "\t.ascii \"%f\\n\"\n"
                    "\t.text\n"
                    "\t.globl main\n"
                    "main:\n"
@@ -720,12 +777,17 @@ bool code_work() {
     bool begin_find = false;
     bool has_oper = false;
     bool has_next = false;
+    bool has_next_while = false;
     bool cycle_for = false;
     bool cycle_while = false;
     bool has_displ = false;
+    char cycle_while_str[100];
+    memset(cycle_while_str, '\0', sizeof(cycle_while_str));
 
     char tmp_block_name[20];
     char tmp_block_next_name[20];
+    char format[5] = ".LC0";
+
     memset(tmp_block_name, '\0', sizeof(tmp_block_name));
 
     char stack[100];
@@ -770,7 +832,7 @@ bool code_work() {
                     bool was_del = true;
                     bool has_condition = false;
                     for (int i = 0; *(postfix + i); ++i) {
-                        if(postfix[i] == '|' || postfix[i] == '-' || postfix[i] == '*' || postfix[i] == '/'){
+                        if(postfix[i] == '|' || postfix[i] == '!' || postfix[i] == '*' || postfix[i] == '/'){
                             has_condition = true;
                         }
                     }
@@ -796,7 +858,7 @@ bool code_work() {
                                 bool skip = true;
                                 if (postfix[j] == '|') {
                                     if (was_val) {
-                                        if (strcmp(stack_asm[index_stack - 1], "") != 0) {
+                                        if (strcmp(stack_asm[index_stack != 1], "") != 0) {
                                             sprintf(template, "\tmov %s, %rax\n", stack_asm[index_stack - 1]);
                                             strcat(result, template);
                                             memset(template, '\0', sizeof(template));
@@ -1005,7 +1067,7 @@ bool code_work() {
                             }
                         }
 //                        if(!has_oper) {
-                            sprintf(template, "\tadd %crbx, %s(%rip)\n"
+                            sprintf(template, "\tmov %crbx, %s(%rip)\n"
                                               "\tmov $0, %rbx\n", '%', variable);
                             strcat(result, template);
                             memset(template, '\0', sizeof(template));
@@ -1025,7 +1087,9 @@ bool code_work() {
                         // ??????????????
                         char str_ch[50];
                         if(isdigit(*postfix)){
-                            sprintf(str_ch, "\tmov $%s, %s(%rip)\n", postfix, variable);
+                            sprintf(str_ch, "\tmov $%s, %crax\n"
+                                                          "\tmov %crax, %s(%crip)\n"
+                                                          "\tmov $0, %crax\n", postfix, '%', '%', variable, '%','%');
                         }else{
                             sprintf(str_ch, "\tmov %s(%crip), %s(%rip)\n", postfix, '%', variable);
                         }
@@ -1036,7 +1100,14 @@ bool code_work() {
                     }
                 }
                 get_buffer_from_token(tokens, buffer[0], buffer[1]);
-                strcat(infix, words[atoi(buffer[0])][atoi(buffer[1])]);
+                if(strcmp(words[atoi(buffer[0])][atoi(buffer[1])], "true") == 0){
+                    strcat(infix, "1");
+                }
+                else if(strcmp(words[atoi(buffer[0])][atoi(buffer[1])], "false") == 0){
+                    strcat(infix, "0");
+                }else{
+                    strcat(infix, words[atoi(buffer[0])][atoi(buffer[1])]);
+                }
             }else{
                 if(strcmp(tokens, "1,0")!=0) {
                     get_buffer_from_token(tokens, buffer[0], buffer[1]);
@@ -1064,7 +1135,9 @@ bool code_work() {
             if(!cycle_for) {
                 if (strcmp(tokens, "1,30") == 0 || strcmp(tokens, "1,22") == 0) {
                     if(cycle_while){
-                        sprintf(template, "\tjmp %s\n", tmp_block_name);
+                        sprintf(template, "%s"
+                                          "\tjg %s\n"
+                                          "\tjmp %s\n", cycle_while_str, tmp_block_next_name, tmp_block_name);
                         strcat(result, template);
                         memset(template, '\0', sizeof(template));
                         memset(tmp_block_name, '\0', sizeof(tmp_block_name));
@@ -1094,33 +1167,62 @@ bool code_work() {
                     has_oper = false;
                 }
                 if(!cycle_for) {
-                    if (strcmp(buffer[0], "3") == 0) {
-                        if(!has_next) {
-                            sprintf(template, "\tmov $0, %crax\n"
-                                              "\tadd %s(%rip), %rax\n", '%', words[atoi(buffer[0])][atoi(buffer[1])]);
-                            strcat(result, template);
-                            memset(template, '\0', sizeof(template));
-                            has_next = true;
-                        }else{
-                            sprintf(template, "\tmov $0, %crbx\n"
-                                              "\tadd %s(%rip), %rbx\n", '%', words[atoi(buffer[0])][atoi(buffer[1])]);
-                            strcat(result, template);
-                            memset(template, '\0', sizeof(template));
-                            has_next = false;
+                    if(cycle_while){
+                        if (strcmp(buffer[0], "3") == 0) {
+                            if(!has_next_while) {
+                                sprintf(template, "\tcmp %s(%rip)", words[atoi(buffer[0])][atoi(buffer[1])]);
+                                strcat(cycle_while_str, template);
+                                memset(template, '\0', sizeof(template));
+                                has_next_while = true;
+                            }else{
+                                sprintf(template, ", %s(%rip)\n", words[atoi(buffer[0])][atoi(buffer[1])]);
+                                strcat(cycle_while_str, template);
+                                memset(template, '\0', sizeof(template));
+                                has_next_while = false;
+                            }
+                        }else if (strcmp(buffer[0], "2") == 0) {
+                            if(!has_next_while) {
+                                sprintf(template, "\tmov $%s, %rbp\n"
+                                                  "\tcmp %rbp", words[atoi(buffer[0])][atoi(buffer[1])]);
+                                strcat(cycle_while_str, template);
+                                memset(template, '\0', sizeof(template));
+                                has_next_while = true;
+                            }else{
+                                sprintf(template, ", $%s\n", words[atoi(buffer[0])][atoi(buffer[1])]);
+                                strcat(cycle_while_str, template);
+                                memset(template, '\0', sizeof(template));
+                                has_next_while = false;
+                            }
                         }
-                    }else if (strcmp(buffer[0], "2") == 0) {
-                        if(!has_next) {
-                            sprintf(template, "\tmov $0, %crax\n"
-                                              "\tadd $%s, %rax\n", '%', words[atoi(buffer[0])][atoi(buffer[1])]);
-                            strcat(result, template);
-                            memset(template, '\0', sizeof(template));
-                            has_next = true;
-                        }else{
-                            sprintf(template, "\tmov $0, %crbx\n"
-                                              "\tadd $%s, %rbx\n", '%', words[atoi(buffer[0])][atoi(buffer[1])]);
-                            strcat(result, template);
-                            memset(template, '\0', sizeof(template));
-                            has_next = false;
+                    }else{
+                        if (strcmp(buffer[0], "3") == 0) {
+                            if(!has_next) {
+                                sprintf(template, "\tmov $0, %crax\n"
+                                                  "\tadd %s(%rip), %rax\n", '%', words[atoi(buffer[0])][atoi(buffer[1])]);
+                                strcat(result, template);
+                                memset(template, '\0', sizeof(template));
+                                has_next = true;
+                            }else{
+                                sprintf(template, "\tmov $0, %crbx\n"
+                                                  "\tadd %s(%rip), %rbx\n", '%', words[atoi(buffer[0])][atoi(buffer[1])]);
+                                strcat(result, template);
+                                memset(template, '\0', sizeof(template));
+                                has_next = false;
+                            }
+                        }else if (strcmp(buffer[0], "2") == 0) {
+                            if(!has_next) {
+                                sprintf(template, "\tmov $0, %crax\n"
+                                                  "\tadd $%s, %rax\n", '%', words[atoi(buffer[0])][atoi(buffer[1])]);
+                                strcat(result, template);
+                                memset(template, '\0', sizeof(template));
+                                has_next = true;
+                            }else{
+                                sprintf(template, "\tmov $0, %crbx\n"
+                                                  "\tadd $%s, %rbx\n", '%', words[atoi(buffer[0])][atoi(buffer[1])]);
+                                strcat(result, template);
+                                memset(template, '\0', sizeof(template));
+                                has_next = false;
+                            }
                         }
                     }
                 }else{
@@ -1183,6 +1285,17 @@ bool code_work() {
                 sprintf(template, "\tmov %s(%rip), %rdx\n", words[atoi(buffer[0])][atoi(buffer[1])]);
                 strcat(result, template);
                 memset(template, '\0', sizeof(template));
+                for(int i = 0; i < vars_count; i++){
+                    if(strcmp(def_vars[i].name, words[atoi(buffer[0])][atoi(buffer[1])]) ==0){
+                        if(strcmp(def_vars[i].type, "float") == 0) {
+                            strcpy(format, ".LC1");
+                        }else{
+                            strcpy(format, ".LC0");
+                        }
+                        break;
+                    }
+                }
+
             }else if(strcmp(buffer[0], "2") == 0){
                 valid = true;
                 sprintf(template, "\tmov $%s, %rdx\n", words[atoi(buffer[0])][atoi(buffer[1])]);
@@ -1190,10 +1303,10 @@ bool code_work() {
                 memset(template, '\0', sizeof(template));
             }
             if(valid) {
-                sprintf(template, "\tmov $0, %rcx\n"
-                                  "\tlea .LC0(%rip), %rax\n"
+                sprintf(template, "\tmov $0, %crcx\n"
+                                  "\tlea %s(%rip), %rax\n"
                                   "\tmov %rax, %rcx\n"
-                                  "\tcall printf\n");
+                                  "\tcall printf\n", '%', format);
                 strcat(result, template);
                 memset(template, '\0', sizeof(template));
             }
@@ -1809,7 +1922,7 @@ bool syntax_check(char _map[]) {
                         continue;
                     } else if ((strcmp(table_number, "2") == 0)) {
                         // TEMPORARY
-//                        char *tmp_value_in_for = number_validation(words[atoi(table_number)][atoi(table_val)]);
+                        char *tmp_value_in_for = number_validation(words[atoi(table_number)][atoi(table_val)]);
                         printf("VALUE FOUND '%s'.\n", words[atoi(table_number)][atoi(table_val)]);
                         strcpy(def_vars[vars_count].value, words[atoi(table_number)][atoi(table_val)]);
 //                        free(tmp_value_in_for);
@@ -1966,16 +2079,16 @@ bool code_check_file_write(const char chars[1024]) {
 
                                 // TEMPORARY
 
-//                                char *tmp_verification;
-//                                tmp_verification = number_validation(tmp);
-//                                if (strcmp(tmp_verification, "false_verification") == 0) {
-//                                    we_have_problem = true;
-//                                    break;
-//                                }
-//                                printf("[%d][%d] Value: '%s' | tmp: %s \n", 2, vars, words[2][vars], tmp);
-//                                strcpy(tmp, tmp_verification);
+                                char *tmp_verification;
+                                tmp_verification = number_validation(tmp);
+                                if (strcmp(tmp_verification, "false_verification") == 0) {
+                                    we_have_problem = true;
+                                    break;
+                                }
+                                printf("[%d][%d] Value: '%s' | tmp: %s \n", 2, vars, words[2][vars], tmp);
+                                strcpy(tmp, tmp_verification);
 
-// //                               free(tmp_verification);
+ //                               free(tmp_verification);
                                 printf("[%d][%d] Binary value is: '%s' | tmp: %s \n", 2, vars, words[2][vars], tmp);
                             }
                             printf("[%d][%d] Value: '%s' | tmp: %s \n", 2, vars, words[2][vars], tmp);
@@ -2074,8 +2187,8 @@ int main() {
     long lSize;
     char *buffer;
 
-    fp = fopen("C:\\Users\\rain\\CLionProjects\\CTest\\code2", "rb");
-    if (!fp) perror("C:\\Users\\rain\\CLionProjects\\CTest\\code"), exit(1);
+    fp = fopen("C:\\Users\\rain\\CLionProjects\\CTest\\code2.vl", "rb");
+    if (!fp) perror("C:\\Users\\rain\\CLionProjects\\CTest\\code.vl"), exit(1);
 
     fseek(fp, 0L, SEEK_END);
     lSize = ftell(fp);
