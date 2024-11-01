@@ -762,7 +762,91 @@ void get_buffer_from_token(const char *tokens, char* _buffer, char* _buffer2){
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void copyFile(const char *sourceFilename, const char *destinationFilename) {
+    FILE *sourceFile = fopen(sourceFilename, "rb");
+    if (sourceFile == NULL) {
+        perror("err open");
+        return;
+    }
+
+    FILE *destinationFile = fopen(destinationFilename, "wb");
+    if (destinationFile == NULL) {
+        perror("err wrt");
+        fclose(sourceFile);
+        return;
+    }
+
+    int byte;
+    while ((byte = fgetc(sourceFile)) != EOF) {
+        fputc(byte, destinationFile);
+    }
+
+    fclose(sourceFile);
+    fclose(destinationFile);
+}
+
+void appendToFile(const char *filename, const void *data, size_t dataSize) {
+    // Открываем файл в режиме добавления (append)
+    FILE *file = fopen(filename, "ab"); // "ab" - бинарный режим добавления
+    if (file == NULL) {
+        perror("Ошибка при открытии файла для добавления");
+        return;
+    }
+
+    // Записываем данные в файл
+    size_t writtenBytes = fwrite(data, 1, dataSize, file);
+    if (writtenBytes != dataSize) {
+        perror("Ошибка при записи в файл");
+    }
+
+    // Закрываем файл
+    fclose(file);
+}
+
 int block_count = 0;
+void compile(char* path){
+    // Copy bites from template header
+    copyFile("C:\\Users\\rain\\CLionProjects\\CTest\\template.bin", "myobj.o");
+
+    FILE *file = fopen(path, "r");
+    if (file == NULL) {
+        perror("error");
+        return;
+    }
+
+    int ch;
+    char buffer[1024];
+    memset(buffer, '\0', 1024);
+    int buff_index = 0;
+    while ((ch = fgetc(file)) != EOF) {
+        if(ch != '\n' && ch != '\t' && ch != ' ' && ch != '%' && ch != ','){
+            buffer[buff_index] = (char)ch;
+            if(strcmp(buffer, "mov") == 0){
+                unsigned char data = 0x48;
+                appendToFile("myobj.o", &data, sizeof(data));
+            }
+            if(strcmp(buffer, "rax") == 0){
+                unsigned char data = 0xb8;
+                appendToFile("myobj.o", &data, sizeof(data));
+            }
+            buff_index++;
+        }else{
+            if(buffer[0] == '$'){
+                for(int i = 1; *(buffer + i); i++){
+                    buffer[i-1] = buffer[i];
+                }
+                char hexval[1024];
+                memset(hexval, '\0', 1024);
+                sprintf(hexval, "%04x", atoi(buffer));
+                appendToFile("myobj.o", &hexval, strlen(hexval));
+            }
+            memset(buffer, '\0', 1024);
+            buff_index = 0;
+        }
+    }
+
+    fclose(file);
+}
 
 bool code_work() {
 
@@ -773,42 +857,39 @@ bool code_work() {
 
     memset(template, '\0', sizeof(template));
 
-    strcat(result, ".text\n"
-                                ".globl\tmain\n"
-                                ".extern printf\n");
-    strcat(result, ".data\n");
+    strcat(result, "section .data\n");
 
     // init variables
     for (int i = 0; i < vars_count; i++) {
-
-        if(strcmp(def_vars[i].value, "true") == 0){
-            sprintf(template, "\t%s: .%s %s\n", def_vars[i].name, "quad", "1");
-        }
-        else if(strcmp(def_vars[i].value, "false") == 0){
-            sprintf(template, "\t%s: .%s %s\n", def_vars[i].name, "quad", "0");
-        }else{
-            sprintf(template, "\t%s: .%s %s\n", def_vars[i].name, "quad", def_vars[i].value);
-        }
-
+            if (strcmp(def_vars[i].value, "true") == 0) {
+                sprintf(template, "\t%s %s %s\n", def_vars[i].name, "dq", "1");
+            } else if (strcmp(def_vars[i].value, "false") == 0) {
+                sprintf(template, "\t%s %s %s\n", def_vars[i].name, "dq", "0");
+            } else {
+                if(strcmp(def_vars[i].value, "")!=0) {
+                    sprintf(template, "\t%s %s %s\n", def_vars[i].name, "dq", def_vars[i].value);
+                }else{
+                    sprintf(template, "\t%s %s %s\n", def_vars[i].name, "dq", "0");
+                }
+            }
         strcat(result, template);
         memset(template, '\0', sizeof(template));
 
     }
+    strcat(result, "\tformat_int db \"%lldn\", 0\n");
+    strcat(result, "\tformat_float db \"%fn\", 0\n");
+
+    strcat(result, "section .text\n"
+                                "\tglobal main\n"
+                                "\textern printf\n");
+
 
     // Init main function program
-    strcat(result, ".LC0:\n"
-                   "\t.ascii \"%lld\\n\"\n"
-                   "\t.text\n"
-                   "\t.globl main\n"
-                   ".LC1:\n"
-                   "\t.ascii \"%f\\n\"\n"
-                   "\t.text\n"
-                   "\t.globl main\n"
-                   "main:\n"
-                   "\tpushq\t%rbp\n"
-                   "\tmovq\t%rsp, %rbp\n"
-                   "\tsubq\t$48, %rsp\n"
-                   "\tmov $0, %rax\n");
+    strcat(result,"main:\n"
+                   "\tpushq\trbp\n"
+                   "\tmovq\trbp, rsp\n"
+                   "\tsubq\trsp, 48\n"
+                   "\tmov rax, 0\n");
 
     // IMPORTANT COMMENTS
 
@@ -1186,7 +1267,7 @@ bool code_work() {
                         memset(tmp_block_name, '\0', sizeof(tmp_block_name));
                         cycle_while = false;
                     }
-                    sprintf(template, "\t%s:\n", tmp_block_next_name);
+                    sprintf(template, "%s:\n", tmp_block_next_name);
                     strcat(result, template);
                     memset(template, '\0', sizeof(template));
                     memset(tmp_block_next_name, '\0', sizeof(tmp_block_next_name));
@@ -1202,7 +1283,7 @@ bool code_work() {
                     strcat(result, template);
                     memset(template, '\0', sizeof(template));
 
-                    sprintf(template, "\t%s:\n", tmp_block_name);
+                    sprintf(template, "%s:\n", tmp_block_name);
                     strcat(result, template);
                     memset(template, '\0', sizeof(template));
                     if(!cycle_while)
@@ -1286,7 +1367,7 @@ bool code_work() {
                         sprintf(tmp_block_name, "b%d", block_count);
                         sprintf(tmp_block_next_name, "n%d", block_count++);
 
-                        sprintf(template, "\t%s:\n", tmp_block_name);
+                        sprintf(template, "%s:\n", tmp_block_name);
                         strcat(result, template);
                         memset(template, '\0', sizeof(template));
 
@@ -1301,7 +1382,7 @@ bool code_work() {
                     }
                     if (strcmp(tokens, "1,22") == 0) { // DETECT NEXT
                         sprintf(template, "\tjmp %s\n"
-                                          "\t%s:\n", tmp_block_name, tmp_block_next_name);
+                                          "%s:\n", tmp_block_name, tmp_block_next_name);
                         strcat(result, template);
                         memset(template, '\0', sizeof(template));
                         cycle_for = false;
@@ -1384,8 +1465,8 @@ bool code_work() {
 
     fclose(fopen("asm.s", "w"));
     file_write("asm.s", result);
-
-    return false;
+    compile("asm.s");
+    return true;
 }
 
 bool syntax_check(char _map[]) {

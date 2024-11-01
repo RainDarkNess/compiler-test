@@ -24,7 +24,7 @@ test,test1,test2:int;
 
 # Начало работы программы #
 begin
-;z assign 123o
+;z assign 1.23E11
 ;displ z
 
 #
@@ -32,9 +32,9 @@ begin
 ; z assign z | 1
 ;displ z
 ;next
+#
 
 ;for i assign 1 val 100 do
 ; displ i
 ;next
-#
 end..
