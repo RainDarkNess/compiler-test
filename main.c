@@ -7,6 +7,13 @@
 #include <stdint.h>
 #define FP2BIN_STRING_MAX 1077
 #define OBJ_FILE_NAME "myobj.o"
+#define TEMP_OBJ_FILE_NAME "tmp_myobj.o"
+
+#define MOV_VAR_RAX "mov_var_rax"
+#define MOV_VAR_RAX "mov_var_rax"
+
+
+
 struct var {
     char name[1024];
     char value[1024];
@@ -785,31 +792,33 @@ void copyFile(const char *sourceFilename, const char *destinationFilename) {
     fclose(destinationFile);
 }
 
-void writeBytesToFile(const char *hexString, const char *filename) {
-    size_t len = strlen(hexString);
-    unsigned char bytes[len / 3 + 1]; // +1 для завершающего нуля
-    size_t byteCount = 0;
-
-    // Парсим строку
-    for (size_t i = 0; i < len; i += 3) {
-        char byteString[3] = {hexString[i], hexString[i + 1], '\0'};
-        bytes[byteCount++] = (unsigned char)strtol(byteString, NULL, 16);
-    }
-
-    // Открываем файл для добавления в бинарном режиме
-    FILE *file = fopen(filename, "ab");
-    if (file == NULL) {
-        perror("err");
+void append_bytes_from_file(const char *source_file_path, const char *destination_file_path) {
+    // Открываем исходный файл для чтения
+    FILE *source_file = fopen(source_file_path, "rb");
+    if (source_file == NULL) {
+        perror("err append_bytes_from_file");
         return;
     }
 
-    // Записываем байты в файл
-    fwrite(bytes, sizeof(unsigned char), byteCount, file);
+    // Открываем файл назначения для добавления
+    FILE *destination_file = fopen(destination_file_path, "ab");
+    if (destination_file == NULL) {
+        perror("err append_bytes_from_file");
+        fclose(source_file);
+        return;
+    }
 
-    // Закрываем файл
-    fclose(file);
+    // Чтение и запись байтов
+    unsigned char buffer[1024]; // Буфер для чтения данных
+    size_t bytes_read;
 
-    printf("ok\n", byteCount, filename);
+    while ((bytes_read = fread(buffer, sizeof(unsigned char), sizeof(buffer), source_file)) > 0) {
+        fwrite(buffer, sizeof(unsigned char), bytes_read, destination_file);
+    }
+
+    // Закрываем файлы
+    fclose(source_file);
+    fclose(destination_file);
 }
 
 void appendToFile(const char *filename, const void *data, size_t dataSize) {
@@ -826,15 +835,69 @@ void appendToFile(const char *filename, const void *data, size_t dataSize) {
 
     fclose(file);
 }
+void appendToFile_big_en(const char *filename, const void *data, size_t dataSize) {
+    FILE *file = fopen(filename, "ab");
+    if (file == NULL) {
+        perror("err appendToFile\n");
+        return;
+    }
+
+    // Запись данных в big-endian
+    const uint8_t *byteData = (const uint8_t *)data;
+    for (size_t i = 0; i < dataSize; i++) {
+        if (fwrite(&byteData[dataSize - 1 - i], 1, 1, file) != 1) {
+            perror("err appendToFile\n");
+            fclose(file);
+            return;
+        }
+    }
+
+    fclose(file);
+}
 
 struct hex_values{
     char name[1024];
     unsigned char addr;
     char value[100];
 };
+
+typedef struct IMAGE_FILE_HEADER {
+    uint32_t Machine;
+    uint32_t NumberOfSections;
+    uint32_t TimeDateStamp;
+    uint32_t PointerToSymbolTable;
+    uint32_t NumberOfSymbols;
+    uint32_t SizeOfOptionalHeader;
+    uint32_t Characteristics;
+} IMAGE_FILE_HEADER, *PIMAGE_FILE_HEADER;
+
+struct COFFHeader {
+    uint32_t physical_address;        // 4 байта
+    uint32_t virtual_address;         // 4 байта
+    uint32_t size_of_raw_data;       // 4 байта
+    uint32_t file_pointer_to_raw_data; // 4 байта
+    uint32_t file_pointer_to_relocation_table; // 4 байта
+    uint32_t file_pointer_to_line_numbers; // 4 байта
+    uint16_t number_of_relocations;   // 2 байта
+    uint16_t number_of_line_numbers;  // 2 байта
+    uint32_t flags;                   // 4 байта
+};
+typedef struct {
+    uint32_t physical_address;        // 4 байта
+    uint32_t virtual_address;         // 4 байта
+    uint32_t size_of_raw_data;       // 4 байта
+    uint32_t file_pointer_to_raw_data; // 4 байта
+    uint32_t file_pointer_to_relocation_table; // 4 байта
+    uint32_t file_pointer_to_line_numbers; // 4 байта
+    uint16_t number_of_relocations;   // 2 байта
+    uint16_t number_of_line_numbers;  // 2 байта
+    uint32_t flags;                   // 4 байта
+} COFFHeader;
+
+
 struct hex_values hex_values_l[1024];
 
-void correct_hex_presentation(char *digit, char* filename){
+void correct_hex_presentation(char *digit, char *filename) {
     long long decimalNumber = atoll(digit);
 
     FILE *file = fopen(filename, "ab");
@@ -842,89 +905,155 @@ void correct_hex_presentation(char *digit, char* filename){
         perror("Ошибка при открытии файла");
         return;
     }
-    unsigned char hex_bytes[2];
-    int num_bytes = 2;
 
-    hex_bytes[0] = (decimalNumber >> 8) & 0xFF;
-    hex_bytes[1] = decimalNumber & 0xFF;
-
-    fwrite(hex_bytes, sizeof(unsigned char), num_bytes, file);
-
-    int padding = 4 - (num_bytes % 4);
-    if (padding < 4) {
-        unsigned char zero_bytes[4] = {0};
-        fwrite(zero_bytes, sizeof(unsigned char), padding, file);
+    // Запись числа в машинном представлении (8 байт для long long)
+    unsigned char hex_bytes[4];
+    for (int i = 0; i < 4; i++) {
+        hex_bytes[i] = (decimalNumber >> (i * 8)) & 0xFF;
     }
-    fclose(file);
 
+    // Запись байтов в файл
+    fwrite(hex_bytes, sizeof(unsigned char), sizeof(hex_bytes), file);
+
+    fclose(file);
 }
 
-void machine_templates(char *op, char *value, int index_vars){
+int machine_templates(char *op, char *value, int index_vars, int byte_count){
     int hex = 0x0;
-    if(strcmp(op, "mov_var_rax") == 0){
+    if(strcmp(op, "mov_var_rax_legacy") == 0){
         hex = 0x48;
-        appendToFile(OBJ_FILE_NAME, &hex, 1);
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
         hex = 0xc7;
-        appendToFile(OBJ_FILE_NAME, &hex, 1);
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
         hex = 0xc0;
-        appendToFile(OBJ_FILE_NAME, &hex, 1);
-    }else if(strcmp(op, "rax_var") == 0){
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+        byte_count += 3;
+    }else if(strcmp(op, "mov_var_rax") == 0){
         hex = 0x48;
-        appendToFile(OBJ_FILE_NAME, &hex, 1);
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+        hex = 0xC7;
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+        hex = 0xC0;
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+        bool found = false;
+        for(int i = 0; i < index_vars; i++){
+            if(strcmp(hex_values_l[i].name, value) == 0){
+                char adr[100];
+                memset(adr, '\0', 100);
+                sprintf(adr, "%d", hex_values_l[i].addr);
+                correct_hex_presentation(adr, TEMP_OBJ_FILE_NAME);
+                found = true;
+                break;
+            }
+        }
+        if(!found){
+            correct_hex_presentation(value, TEMP_OBJ_FILE_NAME);
+        }
+        byte_count += 7;
+    }else if(strcmp(op, "mov_rax_var") == 0){
+        hex = 0x48;
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
         hex = 0x89;
-        appendToFile(OBJ_FILE_NAME, &hex, 1);
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
         hex = 0x05;
-        appendToFile(OBJ_FILE_NAME, &hex, 1);
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
         bool found = false;
         for(int i = 0; i < index_vars; i++){
             if(strcmp(hex_values_l[i].name, value) == 0){
                 char adr[100];
                 memset(adr, '\0', 100);
                 sprintf(adr, "%d", hex_values_l[i].addr);
-                correct_hex_presentation(adr, OBJ_FILE_NAME);
+                correct_hex_presentation(adr, TEMP_OBJ_FILE_NAME);
                 found = true;
                 break;
             }
         }
         if(!found){
-            correct_hex_presentation(value, OBJ_FILE_NAME);
+            correct_hex_presentation(value, TEMP_OBJ_FILE_NAME);
         }
-    }else if(strcmp(op, "rbx_var") == 0){
+        byte_count += 7;
+    }else if(strcmp(op, "mov_var_rbx") == 0){
         hex = 0x48;
-        appendToFile(OBJ_FILE_NAME, &hex, 1);
-        hex = 0x89;
-        appendToFile(OBJ_FILE_NAME, &hex, 1);
-        hex = 0x1d;
-        appendToFile(OBJ_FILE_NAME, &hex, 1);
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+        hex = 0xc7;
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+        hex = 0xc3;
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
         bool found = false;
         for(int i = 0; i < index_vars; i++){
             if(strcmp(hex_values_l[i].name, value) == 0){
                 char adr[100];
                 memset(adr, '\0', 100);
                 sprintf(adr, "%d", hex_values_l[i].addr);
-                correct_hex_presentation(adr, OBJ_FILE_NAME);
+                correct_hex_presentation(adr, TEMP_OBJ_FILE_NAME);
                 found = true;
                 break;
             }
         }
         if(!found){
-            correct_hex_presentation(value, OBJ_FILE_NAME);
+            correct_hex_presentation(value, TEMP_OBJ_FILE_NAME);
         }
+        byte_count += 7;
     }else if(strcmp(op, "add_rbx_rax") == 0){
         hex = 0x48;
-        appendToFile(OBJ_FILE_NAME, &hex, 1);
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
         hex = 0x01;
-        appendToFile(OBJ_FILE_NAME, &hex, 1);
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
         hex = 0xC3;
-        appendToFile(OBJ_FILE_NAME, &hex, 1);
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+        byte_count += 3;
+    }else if(strcmp(op, "add_rax_rbx") == 0){
+        hex = 0x48;
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+        hex = 0x01;
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+        hex = 0xC3;
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+        byte_count += 3;
+    }else if(strcmp(op, "sub_rax_rbx") == 0){
+        hex = 0x48;
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+        hex = 0x29;
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+        byte_count += 2;
+    }else if(strcmp(op, "mul_rax") == 0){
+        hex = 0x48;
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+        hex = 0xF7;
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+        hex = 0xE0;
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+        byte_count += 3;
+    }else if(strcmp(op, "div_rax") == 0){
+        hex = 0x48;
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+        hex = 0xF7;
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+        hex = 0xF0;
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+        byte_count += 3;
+    }else if(strcmp(op, "jmp_addr") == 0){
+        hex = 0xEB;
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+
+        correct_hex_presentation(value, TEMP_OBJ_FILE_NAME);
+        byte_count += 5;
+    }else if(strcmp(op, "cmp_rax_rbx") == 0){
+        hex = 0x48;
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+        hex = 0x39;
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+        byte_count += 2;
     }
+    printf("COMMAND %s\n", op);
+    return byte_count;
 }
 
 
 int block_count = 0;
 //void compile(char* path){
 //    // Copy bites from template header
-//    copyFile("C:\\Users\\rain\\CLionProjects\\CTest\\template.bin", OBJ_FILE_NAME);
+//    copyFile("C:\\Users\\rain\\CLionProjects\\CTest\\template.bin", TEMP_OBJ_FILE_NAME);
 //
 //    FILE *file = fopen(path, "r");
 //    if (file == NULL) {
@@ -941,11 +1070,11 @@ int block_count = 0;
 //            buffer[buff_index] = (char)ch;
 //            if(strcmp(buffer, "mov") == 0){
 //                unsigned char data = 0x48;
-//                appendToFile(OBJ_FILE_NAME, &data, sizeof(data));
+//                appendToFile(TEMP_OBJ_FILE_NAME, &data, sizeof(data));
 //            }
 //            if(strcmp(buffer, "rax") == 0){
 //                unsigned char data = 0xb8;
-//                appendToFile(OBJ_FILE_NAME, &data, sizeof(data));
+//                appendToFile(TEMP_OBJ_FILE_NAME, &data, sizeof(data));
 //            }
 //            buff_index++;
 //        }else{
@@ -956,7 +1085,7 @@ int block_count = 0;
 //                char hexval[1024];
 //                memset(hexval, '\0', 1024);
 //                sprintf(hexval, "%04x", atoi(buffer));
-//                appendToFile(OBJ_FILE_NAME, &hexval, strlen(hexval));
+//                appendToFile(TEMP_OBJ_FILE_NAME, &hexval, strlen(hexval));
 //            }
 //            memset(buffer, '\0', 1024);
 //            buff_index = 0;
@@ -967,12 +1096,74 @@ int block_count = 0;
 //}
 
 
+struct IMAGE_FILE_HEADER fileHeader;
+struct COFFHeader text;
+struct COFFHeader data;
+struct COFFHeader bss;
 
+void add_coff_header(){
+    appendToFile(OBJ_FILE_NAME, &fileHeader.Machine, 2);
+    appendToFile(OBJ_FILE_NAME, &fileHeader.NumberOfSections, 2);
+    appendToFile(OBJ_FILE_NAME, &fileHeader.TimeDateStamp, 4);
+    appendToFile(OBJ_FILE_NAME, &fileHeader.PointerToSymbolTable, 4);
+    appendToFile(OBJ_FILE_NAME, &fileHeader.NumberOfSymbols, 4);
+    appendToFile(OBJ_FILE_NAME, &fileHeader.SizeOfOptionalHeader, 2);
+    appendToFile(OBJ_FILE_NAME, &fileHeader.Characteristics, 2);
+}
+void add_text_header(){
+    uint32_t hex_local = 0x2E; // name .
+    appendToFile(OBJ_FILE_NAME, &hex_local, 1);
+    hex_local = 0x74786574; // name text
+    appendToFile(OBJ_FILE_NAME, &hex_local, 4);
+
+    appendToFile_big_en(OBJ_FILE_NAME, &text.physical_address, 4);
+    appendToFile_big_en(OBJ_FILE_NAME, &text.virtual_address, 4);
+    appendToFile_big_en(OBJ_FILE_NAME, &text.size_of_raw_data, 4);
+    appendToFile_big_en(OBJ_FILE_NAME, &text.file_pointer_to_raw_data, 4);
+    appendToFile_big_en(OBJ_FILE_NAME, &text.file_pointer_to_relocation_table, 4);
+    appendToFile_big_en(OBJ_FILE_NAME, &text.file_pointer_to_line_numbers, 4);
+    appendToFile_big_en(OBJ_FILE_NAME, &text.number_of_relocations, 2);
+    appendToFile_big_en(OBJ_FILE_NAME, &text.number_of_line_numbers, 2);
+    appendToFile_big_en(OBJ_FILE_NAME, &text.flags, 4);
+}
+void add_data_header(){
+    uint32_t hex_local = 0x2E; // name .
+    appendToFile(OBJ_FILE_NAME, &hex_local, 1);
+    hex_local = 0x64746161; // name data
+    appendToFile(OBJ_FILE_NAME, &hex_local, 4);
+
+    appendToFile_big_en(OBJ_FILE_NAME, &data.physical_address, 4);
+    appendToFile_big_en(OBJ_FILE_NAME, &data.virtual_address, 4);
+    appendToFile_big_en(OBJ_FILE_NAME, &data.size_of_raw_data, 4);
+    appendToFile_big_en(OBJ_FILE_NAME, &data.file_pointer_to_raw_data, 4);
+    appendToFile_big_en(OBJ_FILE_NAME, &data.file_pointer_to_relocation_table, 4);
+    appendToFile_big_en(OBJ_FILE_NAME, &data.file_pointer_to_line_numbers, 4);
+    appendToFile_big_en(OBJ_FILE_NAME, &data.number_of_relocations, 2);
+    appendToFile_big_en(OBJ_FILE_NAME, &data.number_of_line_numbers, 2);
+    appendToFile_big_en(OBJ_FILE_NAME, &data.flags, 4);
+}
+void add_bss_header(){
+    uint32_t hex_local = 0x2E; // name .
+    appendToFile(OBJ_FILE_NAME, &hex_local, 1);
+    hex_local = 0x737362; // name bss
+    appendToFile(OBJ_FILE_NAME, &hex_local, 3);
+
+    appendToFile_big_en(OBJ_FILE_NAME, &bss.physical_address, 4);
+    appendToFile_big_en(OBJ_FILE_NAME, &bss.virtual_address, 4);
+    appendToFile_big_en(OBJ_FILE_NAME, &bss.size_of_raw_data, 4);
+    appendToFile_big_en(OBJ_FILE_NAME, &bss.file_pointer_to_raw_data, 4);
+    appendToFile_big_en(OBJ_FILE_NAME, &bss.file_pointer_to_relocation_table, 4);
+    appendToFile_big_en(OBJ_FILE_NAME, &bss.file_pointer_to_line_numbers, 4);
+    appendToFile_big_en(OBJ_FILE_NAME, &bss.number_of_relocations, 2);
+    appendToFile_big_en(OBJ_FILE_NAME, &bss.number_of_line_numbers, 2);
+    appendToFile_big_en(OBJ_FILE_NAME, &bss.flags, 4);
+}
 
 
 bool code_work() {
 
-
+    int raw_data = 0x0;
+    int byte_count = 0;
     char result[4068];
     memset(result, '\0', 4068);
 
@@ -980,13 +1171,33 @@ bool code_work() {
 
     memset(template, '\0', sizeof(template));
     char hexval[1024];
-    char hex_str[1024];
 
     memset(hexval, '\0', 1024);
 
 //    copyFile("C:\\Users\\rain\\CLionProjects\\CTest\\template.bin", OBJ_FILE_NAME);
-
-
+    unsigned char hex_local = 0x25;
+    appendToFile(TEMP_OBJ_FILE_NAME, &hex_local, 1);
+    hex_local = 0x66;
+    appendToFile(TEMP_OBJ_FILE_NAME, &hex_local, 1);
+    hex_local = 0x0A;
+    appendToFile(TEMP_OBJ_FILE_NAME, &hex_local, 1);
+    hex_local = 0x55;
+    appendToFile(TEMP_OBJ_FILE_NAME, &hex_local, 1);
+    hex_local = 0x48;
+    appendToFile(TEMP_OBJ_FILE_NAME, &hex_local, 1);
+    hex_local = 0x89;
+    appendToFile(TEMP_OBJ_FILE_NAME, &hex_local, 1);
+    hex_local = 0xE5;
+    appendToFile(TEMP_OBJ_FILE_NAME, &hex_local, 1);
+    hex_local = 0x48;
+    appendToFile(TEMP_OBJ_FILE_NAME, &hex_local, 1);
+    hex_local = 0x83;
+    appendToFile(TEMP_OBJ_FILE_NAME, &hex_local, 1);
+    hex_local = 0xEC;
+    appendToFile(TEMP_OBJ_FILE_NAME, &hex_local, 1);
+    hex_local = 0x30;
+    appendToFile(TEMP_OBJ_FILE_NAME, &hex_local, 1);
+    byte_count+=11;
     // init variables
     int index_vars = 0;
     int max_hex_addr = 0x0;
@@ -1194,7 +1405,7 @@ bool code_work() {
                                             memset(adr, '\0', 100);
                                             sprintf(adr, "%d", s_a[index_stack - 1]);
 
-                                            machine_templates("rax_var", adr, index_vars);
+                                            byte_count = machine_templates("mov_var_rax", adr, index_vars, byte_count);
 
                                         }
                                         if (strcmp(stack_asm[index_stack - 0], "") != 0) {
@@ -1206,14 +1417,15 @@ bool code_work() {
                                             memset(adr, '\0', 100);
                                             sprintf(adr, "%d", s_a[index_stack]);
 
-                                            machine_templates("rbx_var", adr, index_vars);
+                                            byte_count = machine_templates("mov_var_rbx", adr, index_vars, byte_count);
 
                                             sprintf(template, "\tadd %rax, %rbx\n"
                                                               "\tmov $0, %rax\n");
 
-                                            machine_templates("add_rbx_rax", adr, index_vars);
-                                            machine_templates("mov_var_rax", "", 0);
-                                            correct_hex_presentation("0", OBJ_FILE_NAME);
+                                            byte_count = machine_templates("add_rax_rbx", adr, index_vars, byte_count);
+                                            byte_count = machine_templates("mov_var_rax", "0", 0, byte_count);
+//                                            correct_hex_presentation("0", TEMP_OBJ_FILE_NAME);
+//                                            byte_count+=4;
 
                                             strcat(result, template);
                                             memset(template, '\0', sizeof(template));
@@ -1419,27 +1631,6 @@ bool code_work() {
                             strcat(result, template);
                             memset(template, '\0', sizeof(template));
 
-//                        unsigned char hex = 0x48;
-//                        appendToFile(OBJ_FILE_NAME, &hex, 1);
-
-
-//                        for(int k = 0; k < index_vars; k++){
-//                            if(strcmp(hex_values_l[k].name , variable) == 0){
-//                                hex = hex_values_l[k].addr;
-//                                printf("%x address\n", hex);
-//                                appendToFile(OBJ_FILE_NAME, &hex, sizeof(hex));
-//                                break;
-//                            }
-//                        }
-
-//                        hex = 0x48;
-//                        appendToFile(OBJ_FILE_NAME, &hex, 1);
-
-//                        hex = 0x03; //rbx
-//                        appendToFile(OBJ_FILE_NAME, &hex, 1);
-
-//                        hex = 0x00;
-//                        appendToFile(OBJ_FILE_NAME, &hex, 1);
 //                        }else{
 //                            sprintf(template, "\tmov %rbx, %rax\n"
 //                                              "\tmov $0, %rbx\n");
@@ -1461,18 +1652,17 @@ bool code_work() {
                                                           "\tmov $0, %crax\n", postfix, '%', '%', variable, '%','%');
 
 
-                            memset(hex_str, '\0', 100);
+                            byte_count = machine_templates("mov_var_rax", postfix, index_vars, byte_count);
+//                            correct_hex_presentation(postfix, TEMP_OBJ_FILE_NAME);
+//                            byte_count+=4;
 
-                            machine_templates("mov_var_rax", "", 0);
-                            correct_hex_presentation(postfix, OBJ_FILE_NAME);
+                            byte_count = machine_templates("mov_rax_var", variable, index_vars, byte_count);
+//                            correct_hex_presentation(postfix, TEMP_OBJ_FILE_NAME);
+//                            byte_count+=4;
 
-                            machine_templates("rax_var", variable, index_vars);
-                            correct_hex_presentation(postfix, OBJ_FILE_NAME);
-
-                            machine_templates("mov_var_rax", "", 0);
-                            correct_hex_presentation("0", OBJ_FILE_NAME);
-
-                            writeBytesToFile(hex_str, OBJ_FILE_NAME);
+                            byte_count = machine_templates("mov_var_rax", "0", 0, byte_count);
+//                            correct_hex_presentation("0", TEMP_OBJ_FILE_NAME);
+//                            byte_count+=4;
 
                         }else{
                             sprintf(str_ch, "\tmov %s(%crip), %s(%rip)\n", postfix, '%', variable);
@@ -1703,7 +1893,60 @@ bool code_work() {
         }
         tokens = strtok(NULL, ";");
     }
+    raw_data+=(byte_count / 16)*10;
 
+    byte_count = byte_count / 16;
+    if(byte_count%16!=0){
+        raw_data+=10;
+    }
+
+    fileHeader.Machine = 0x8664;
+    fileHeader.NumberOfSections = 0x0003;
+    fileHeader.TimeDateStamp = 0x00000000;
+    fileHeader.PointerToSymbolTable =  0x000000dc;
+    fileHeader.NumberOfSymbols =  0x0000000C;
+    fileHeader.SizeOfOptionalHeader = 0x0000;
+    fileHeader.Characteristics = 0x0005;
+
+    add_coff_header();
+
+    text.physical_address = 0x00000000;
+    text.virtual_address  = 0x00000000;
+    text.size_of_raw_data = raw_data;
+    text.file_pointer_to_raw_data =  0x0000008c; // !!!!
+    text.file_pointer_to_relocation_table = 0x00000000; // !!!!
+    text.file_pointer_to_line_numbers = 0x00000000;
+    text.number_of_relocations = 0x0000;
+    text.number_of_line_numbers = 0x0000;
+    text.flags = 0x60500020;
+
+    add_text_header();
+
+    data.physical_address = 0x00000000;
+    data.virtual_address  = 0x00000000;
+    data.size_of_raw_data = 0x00000020;
+    data.file_pointer_to_raw_data =  raw_data + 20; // !!!!
+    data.file_pointer_to_relocation_table = 0x00000000;
+    data.file_pointer_to_line_numbers = 0x00000000;
+    data.number_of_relocations = 0x0000;
+    data.number_of_line_numbers = 0x0000;
+    data.flags = 0xC0500040;
+
+    add_data_header();
+
+    bss.physical_address = 0x00000000;
+    bss.virtual_address  = 0x00000000;
+    bss.size_of_raw_data = 0x00000000;
+    bss.file_pointer_to_raw_data =  0x00000000; // !!!!
+    bss.file_pointer_to_relocation_table = 0x00000000;
+    bss.file_pointer_to_line_numbers = 0x00000000;
+    bss.number_of_relocations = 0x0000;
+    bss.number_of_line_numbers = 0x0000;
+    bss.flags = 0xC0500080;
+
+    add_bss_header();
+
+    append_bytes_from_file(TEMP_OBJ_FILE_NAME, OBJ_FILE_NAME);
 
     strcat(result,
                    "\tmovl\t$0, %eax\n"
