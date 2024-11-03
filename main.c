@@ -7,7 +7,9 @@
 #include <stdint.h>
 #define FP2BIN_STRING_MAX 1077
 #define OBJ_FILE_NAME "myobj.o"
-#define TEMP_OBJ_FILE_NAME "tmp_myobj.o"
+#define TEMP_OBJ_FILE_NAME "tmp_myobj"
+#define TEMP_OBJ_FILE_RELOCATIONS "tmp_myobj_relocations"
+#define TEMP_OBJ_FILE_SYMBOLS "tmp_myobj_symbols"
 
 #define MOV_VAR_RAX "mov_var_rax"
 #define MOV_VAR_RAX "mov_var_rax"
@@ -529,14 +531,6 @@ void hexToAscii(char *hex, char *ascii) {
 
 }
 
-void reverseBytes(const char *input, char *output, int len) {
-    for (int i = 0; i < len; i++) {
-        output[i] = input[len - 1 - i];
-    }
-    output[len] = '\0';
-}
-
-
 const char *check_type_data(char *value) {
     const char *type_data = "int";
     if (strcmp(value, "true") == 0 || strcmp(value, "false") == 0) {
@@ -571,12 +565,6 @@ const char *check_type_data(char *value) {
         return "bool";
     }
 
-//    for (int i = 0; *(value + i); i++) {
-//        if (value[i] == '.') {
-//            type_data = "float";
-//            break;
-//        }
-//    }
     return type_data;
 }
 
@@ -623,44 +611,6 @@ int putValToVar(int number_dist, char value[]) {
 }
 
 
-char *readFile(const char *filePath) {
-    FILE *file_ptr;
-    char *string = NULL;
-    size_t size = 0;
-    size_t index = 0;
-    char ch;
-
-    file_ptr = fopen(filePath, "r");
-    if (NULL == file_ptr) {
-        printf("file not found‚\n");
-        return NULL;
-    }
-
-    string = malloc(1024);
-    if (string == NULL) {
-        printf("er\n");
-        fclose(file_ptr);
-        return NULL;
-    }
-
-    while ((ch = fgetc(file_ptr)) != EOF) {
-        if (index >= size - 1) {
-            size += 1024; // РЈРІРµР»РёС‡РёРІР°РµРј СЂР°Р·РјРµСЂ РЅР° 1024
-            string = realloc(string, size);
-            if (string == NULL) {
-                printf("er\n");
-                fclose(file_ptr);
-                return NULL;
-            }
-        }
-        string[index++] = ch;
-    }
-    string[index] = '\0';
-
-
-    fclose(file_ptr);
-    return string;
-}
 
 
 #define MAX 100
@@ -769,28 +719,6 @@ void get_buffer_from_token(const char *tokens, char* _buffer, char* _buffer2){
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void copyFile(const char *sourceFilename, const char *destinationFilename) {
-    FILE *sourceFile = fopen(sourceFilename, "rb");
-    if (sourceFile == NULL) {
-        perror("err open");
-        return;
-    }
-
-    FILE *destinationFile = fopen(destinationFilename, "wb");
-    if (destinationFile == NULL) {
-        perror("err wrt");
-        fclose(sourceFile);
-        return;
-    }
-
-    int byte;
-    while ((byte = fgetc(sourceFile)) != EOF) {
-        fputc(byte, destinationFile);
-    }
-
-    fclose(sourceFile);
-    fclose(destinationFile);
-}
 
 void append_bytes_from_file(const char *source_file_path, const char *destination_file_path) {
     // Открываем исходный файл для чтения
@@ -835,23 +763,13 @@ void appendToFile(const char *filename, const void *data, size_t dataSize) {
 
     fclose(file);
 }
-void appendToFile_big_en(const char *filename, const void *data, size_t dataSize) {
+void appendToFile_little_en(const char *filename, const void *data, size_t size) {
     FILE *file = fopen(filename, "ab");
     if (file == NULL) {
-        perror("err appendToFile\n");
+        perror("Error opening file");
         return;
     }
-
-    // Запись данных в big-endian
-    const uint8_t *byteData = (const uint8_t *)data;
-    for (size_t i = 0; i < dataSize; i++) {
-        if (fwrite(&byteData[dataSize - 1 - i], 1, 1, file) != 1) {
-            perror("err appendToFile\n");
-            fclose(file);
-            return;
-        }
-    }
-
+    fwrite(data, sizeof(uint8_t), size, file);
     fclose(file);
 }
 
@@ -871,7 +789,7 @@ typedef struct IMAGE_FILE_HEADER {
     uint32_t Characteristics;
 } IMAGE_FILE_HEADER, *PIMAGE_FILE_HEADER;
 
-struct COFFHeader {
+typedef struct  {
     uint32_t physical_address;        // 4 байта
     uint32_t virtual_address;         // 4 байта
     uint32_t size_of_raw_data;       // 4 байта
@@ -881,19 +799,25 @@ struct COFFHeader {
     uint16_t number_of_relocations;   // 2 байта
     uint16_t number_of_line_numbers;  // 2 байта
     uint32_t flags;                   // 4 байта
-};
-typedef struct {
-    uint32_t physical_address;        // 4 байта
-    uint32_t virtual_address;         // 4 байта
-    uint32_t size_of_raw_data;       // 4 байта
-    uint32_t file_pointer_to_raw_data; // 4 байта
-    uint32_t file_pointer_to_relocation_table; // 4 байта
-    uint32_t file_pointer_to_line_numbers; // 4 байта
-    uint16_t number_of_relocations;   // 2 байта
-    uint16_t number_of_line_numbers;  // 2 байта
-    uint32_t flags;                   // 4 байта
-} COFFHeader;
+}COFFHeader;
 
+typedef struct {
+    uint32_t r_offset;
+    uint32_t r_symbol;
+    uint16_t r_type;
+} RelocationEntry;
+
+typedef struct {
+    union {
+        char   s_name[8];
+        uint32_t s_strx;
+    };
+    uint32_t s_value;
+    uint16_t s_section;
+    uint16_t s_type;
+    uint8_t  s_storage_class;
+    uint8_t  s_num_aux;
+} SymbolEntry;
 
 struct hex_values hex_values_l[1024];
 
@@ -1051,55 +975,12 @@ int machine_templates(char *op, char *value, int index_vars, int byte_count){
 
 
 int block_count = 0;
-//void compile(char* path){
-//    // Copy bites from template header
-//    copyFile("C:\\Users\\rain\\CLionProjects\\CTest\\template.bin", TEMP_OBJ_FILE_NAME);
-//
-//    FILE *file = fopen(path, "r");
-//    if (file == NULL) {
-//        perror("error");
-//        return;
-//    }
-//
-//    int ch;
-//    char buffer[1024];
-//    memset(buffer, '\0', 1024);
-//    int buff_index = 0;
-//    while ((ch = fgetc(file)) != EOF) {
-//        if(ch != '\n' && ch != '\t' && ch != ' ' && ch != '%' && ch != ','){
-//            buffer[buff_index] = (char)ch;
-//            if(strcmp(buffer, "mov") == 0){
-//                unsigned char data = 0x48;
-//                appendToFile(TEMP_OBJ_FILE_NAME, &data, sizeof(data));
-//            }
-//            if(strcmp(buffer, "rax") == 0){
-//                unsigned char data = 0xb8;
-//                appendToFile(TEMP_OBJ_FILE_NAME, &data, sizeof(data));
-//            }
-//            buff_index++;
-//        }else{
-//            if(buffer[0] == '$'){
-//                for(int i = 1; *(buffer + i); i++){
-//                    buffer[i-1] = buffer[i];
-//                }
-//                char hexval[1024];
-//                memset(hexval, '\0', 1024);
-//                sprintf(hexval, "%04x", atoi(buffer));
-//                appendToFile(TEMP_OBJ_FILE_NAME, &hexval, strlen(hexval));
-//            }
-//            memset(buffer, '\0', 1024);
-//            buff_index = 0;
-//        }
-//    }
-//
-//    fclose(file);
-//}
 
 
 struct IMAGE_FILE_HEADER fileHeader;
-struct COFFHeader text;
-struct COFFHeader data;
-struct COFFHeader bss;
+COFFHeader text;
+COFFHeader data;
+COFFHeader bss;
 
 void add_coff_header(){
     appendToFile(OBJ_FILE_NAME, &fileHeader.Machine, 2);
@@ -1110,55 +991,36 @@ void add_coff_header(){
     appendToFile(OBJ_FILE_NAME, &fileHeader.SizeOfOptionalHeader, 2);
     appendToFile(OBJ_FILE_NAME, &fileHeader.Characteristics, 2);
 }
-void add_text_header(){
-    uint32_t hex_local = 0x2E; // name .
-    appendToFile(OBJ_FILE_NAME, &hex_local, 1);
-    hex_local = 0x74786574; // name text
-    appendToFile(OBJ_FILE_NAME, &hex_local, 4);
-
-    appendToFile_big_en(OBJ_FILE_NAME, &text.physical_address, 4);
-    appendToFile_big_en(OBJ_FILE_NAME, &text.virtual_address, 4);
-    appendToFile_big_en(OBJ_FILE_NAME, &text.size_of_raw_data, 4);
-    appendToFile_big_en(OBJ_FILE_NAME, &text.file_pointer_to_raw_data, 4);
-    appendToFile_big_en(OBJ_FILE_NAME, &text.file_pointer_to_relocation_table, 4);
-    appendToFile_big_en(OBJ_FILE_NAME, &text.file_pointer_to_line_numbers, 4);
-    appendToFile_big_en(OBJ_FILE_NAME, &text.number_of_relocations, 2);
-    appendToFile_big_en(OBJ_FILE_NAME, &text.number_of_line_numbers, 2);
-    appendToFile_big_en(OBJ_FILE_NAME, &text.flags, 4);
-}
-void add_data_header(){
-    uint32_t hex_local = 0x2E; // name .
-    appendToFile(OBJ_FILE_NAME, &hex_local, 1);
-    hex_local = 0x64746161; // name data
-    appendToFile(OBJ_FILE_NAME, &hex_local, 4);
-
-    appendToFile_big_en(OBJ_FILE_NAME, &data.physical_address, 4);
-    appendToFile_big_en(OBJ_FILE_NAME, &data.virtual_address, 4);
-    appendToFile_big_en(OBJ_FILE_NAME, &data.size_of_raw_data, 4);
-    appendToFile_big_en(OBJ_FILE_NAME, &data.file_pointer_to_raw_data, 4);
-    appendToFile_big_en(OBJ_FILE_NAME, &data.file_pointer_to_relocation_table, 4);
-    appendToFile_big_en(OBJ_FILE_NAME, &data.file_pointer_to_line_numbers, 4);
-    appendToFile_big_en(OBJ_FILE_NAME, &data.number_of_relocations, 2);
-    appendToFile_big_en(OBJ_FILE_NAME, &data.number_of_line_numbers, 2);
-    appendToFile_big_en(OBJ_FILE_NAME, &data.flags, 4);
-}
-void add_bss_header(){
-    uint32_t hex_local = 0x2E; // name .
-    appendToFile(OBJ_FILE_NAME, &hex_local, 1);
-    hex_local = 0x737362; // name bss
-    appendToFile(OBJ_FILE_NAME, &hex_local, 3);
-
-    appendToFile_big_en(OBJ_FILE_NAME, &bss.physical_address, 4);
-    appendToFile_big_en(OBJ_FILE_NAME, &bss.virtual_address, 4);
-    appendToFile_big_en(OBJ_FILE_NAME, &bss.size_of_raw_data, 4);
-    appendToFile_big_en(OBJ_FILE_NAME, &bss.file_pointer_to_raw_data, 4);
-    appendToFile_big_en(OBJ_FILE_NAME, &bss.file_pointer_to_relocation_table, 4);
-    appendToFile_big_en(OBJ_FILE_NAME, &bss.file_pointer_to_line_numbers, 4);
-    appendToFile_big_en(OBJ_FILE_NAME, &bss.number_of_relocations, 2);
-    appendToFile_big_en(OBJ_FILE_NAME, &bss.number_of_line_numbers, 2);
-    appendToFile_big_en(OBJ_FILE_NAME, &bss.flags, 4);
+void add_section_header(COFFHeader header){
+    appendToFile_little_en(OBJ_FILE_NAME, &header.physical_address, 4);
+    appendToFile_little_en(OBJ_FILE_NAME, &header.virtual_address, 4);
+    appendToFile_little_en(OBJ_FILE_NAME, &header.size_of_raw_data, 4);
+    appendToFile_little_en(OBJ_FILE_NAME, &header.file_pointer_to_raw_data, 4);
+    appendToFile_little_en(OBJ_FILE_NAME, &header.file_pointer_to_relocation_table, 4);
+    appendToFile_little_en(OBJ_FILE_NAME, &header.file_pointer_to_line_numbers, 4);
+    appendToFile_little_en(OBJ_FILE_NAME, &header.number_of_relocations, 2);
+    appendToFile_little_en(OBJ_FILE_NAME, &header.number_of_line_numbers, 2);
+    appendToFile_little_en(OBJ_FILE_NAME, &header.flags, 4);
 }
 
+uint32_t ascii_to_hex(const char *ascii_string) {
+    uint32_t result = 0;
+    for (int i = 0; i < strlen(ascii_string); i++) {
+        uint8_t byte = (uint8_t)ascii_string[i];
+        result = (result << 8) | byte;
+    }
+    return result;
+}
+
+void add_symbol_table(SymbolEntry symbolEntry) {
+    uint32_t name = ascii_to_hex(symbolEntry.s_name);
+    appendToFile_little_en(TEMP_OBJ_FILE_SYMBOLS, &name, 8);
+    appendToFile_little_en(TEMP_OBJ_FILE_SYMBOLS, &symbolEntry.s_value, 8);
+    appendToFile_little_en(TEMP_OBJ_FILE_SYMBOLS, &symbolEntry.s_section, 2);
+    appendToFile_little_en(TEMP_OBJ_FILE_SYMBOLS, &symbolEntry.s_type, 2);
+    appendToFile_little_en(TEMP_OBJ_FILE_SYMBOLS, &symbolEntry.s_storage_class, 1);
+    appendToFile_little_en(TEMP_OBJ_FILE_SYMBOLS, &symbolEntry.s_num_aux, 1);
+}
 
 bool code_work() {
 
@@ -1166,6 +1028,10 @@ bool code_work() {
     int byte_count = 0;
     char result[4068];
     memset(result, '\0', 4068);
+
+    fclose(fopen(OBJ_FILE_NAME, "w"));
+    fclose(fopen(TEMP_OBJ_FILE_NAME, "w"));
+    fclose(fopen(TEMP_OBJ_FILE_SYMBOLS, "w"));
 
     char template[200];
 
@@ -1914,13 +1780,21 @@ bool code_work() {
     text.virtual_address  = 0x00000000;
     text.size_of_raw_data = raw_data;
     text.file_pointer_to_raw_data =  0x0000008c; // !!!!
-    text.file_pointer_to_relocation_table = 0x00000000; // !!!!
+    text.file_pointer_to_relocation_table = 0x0000016c; // !!!!
     text.file_pointer_to_line_numbers = 0x00000000;
-    text.number_of_relocations = 0x0000;
+    text.number_of_relocations = 0x0008;
     text.number_of_line_numbers = 0x0000;
     text.flags = 0x60500020;
 
-    add_text_header();
+    uint32_t hex_local_l = 0x2E; // name .
+    appendToFile(OBJ_FILE_NAME, &hex_local_l, 1);
+    hex_local_l = 0x74786574; // name text
+    appendToFile(OBJ_FILE_NAME, &hex_local_l, 4);
+
+    hex_local_l = 0x000000; // name ____
+    appendToFile(OBJ_FILE_NAME, &hex_local_l, 3);
+
+    add_section_header(text);
 
     data.physical_address = 0x00000000;
     data.virtual_address  = 0x00000000;
@@ -1932,7 +1806,14 @@ bool code_work() {
     data.number_of_line_numbers = 0x0000;
     data.flags = 0xC0500040;
 
-    add_data_header();
+    hex_local_l = 0x2E; // name .
+    appendToFile(OBJ_FILE_NAME, &hex_local_l, 1);
+    hex_local_l = 0x61746164; // name data
+    appendToFile_little_en(OBJ_FILE_NAME, &hex_local_l, 4);
+    hex_local_l = 0x000000; // name ____
+    appendToFile(OBJ_FILE_NAME, &hex_local_l, 3);
+
+    add_section_header(data);
 
     bss.physical_address = 0x00000000;
     bss.virtual_address  = 0x00000000;
@@ -1944,10 +1825,40 @@ bool code_work() {
     bss.number_of_line_numbers = 0x0000;
     bss.flags = 0xC0500080;
 
-    add_bss_header();
+    hex_local_l = 0x2E; // name .
+    appendToFile(OBJ_FILE_NAME, &hex_local_l, 1);
+    hex_local_l = 0x737362; // name bss
+    appendToFile(OBJ_FILE_NAME, &hex_local_l, 3);
+
+    hex_local_l = 0x00000000; // name ____
+    appendToFile(OBJ_FILE_NAME, &hex_local_l, 4);
+
+    add_section_header(bss);
 
     append_bytes_from_file(TEMP_OBJ_FILE_NAME, OBJ_FILE_NAME);
 
+    SymbolEntry symbolEntry = {
+        .s_name = ".file",
+        .s_value = 0x00000000,
+        .s_section = 0x02,
+        .s_type = 0x01,
+        .s_storage_class = 0x01,
+        .s_num_aux = 0x00
+    };
+
+    add_symbol_table(symbolEntry);
+
+    for(int k = 0; k < index_vars; k++){
+        SymbolEntry symbolEntryVar;
+        strcpy(symbolEntryVar.s_name, hex_values_l[k].name);
+        symbolEntryVar.s_value = hex_values_l[k].addr;
+        symbolEntryVar.s_section = 0x01;
+        symbolEntryVar.s_storage_class = 0x02;
+        symbolEntryVar.s_num_aux = 0x00;
+
+        add_symbol_table(symbolEntryVar);
+    }
+//hex_values_l[index_vars]
     strcat(result,
                    "\tmovl\t$0, %eax\n"
                    "\taddq\t$48, %rsp\n"
