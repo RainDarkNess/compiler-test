@@ -13,14 +13,10 @@
 program var
 
 # Объявление переменных #
-z, y, a:int;
+a:int;
 
 # Начало работы программы #
 begin
 ;a assign 12
-;y assign 3
-;z assign 558
-;z assign a | y
 
-;displ z
 end..

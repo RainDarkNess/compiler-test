@@ -1052,7 +1052,13 @@ void add_data_section(struct hex_values hex){
 void add_symbol_table(SymbolEntry symbolEntry) {
 //    uint32_t name = ascii_to_hex(symbolEntry.s_name);
 //    appendToFile_little_en(TEMP_OBJ_FILE_SYMBOLS, &name, 8);
-    appendToFile_little_en(TEMP_OBJ_FILE_SYMBOLS, &symbolEntry.s_name, 8);
+    appendToFile_little_en(TEMP_OBJ_FILE_SYMBOLS, &symbolEntry.s_name, strlen(symbolEntry.s_name));
+    unsigned long long size_str = strlen(symbolEntry.s_name);
+    uint32_t null_hex = 0x00;
+    while (size_str < 8){
+        size_str++;
+        appendToFile_little_en(TEMP_OBJ_FILE_SYMBOLS, &null_hex, 1);
+    }
     appendToFile_little_en(TEMP_OBJ_FILE_SYMBOLS, &symbolEntry.s_value, 4);
     appendToFile_little_en(TEMP_OBJ_FILE_SYMBOLS, &symbolEntry.s_section, 2);
     appendToFile_little_en(TEMP_OBJ_FILE_SYMBOLS, &symbolEntry.s_type, 2);
@@ -1096,6 +1102,7 @@ bool code_work() {
     fclose(fopen(TEMP_OBJ_FILE_NAME, "w"));
     fclose(fopen(TEMP_OBJ_FILE_SYMBOLS, "w"));
     fclose(fopen(TEMP_OBJ_FILE_NAME_DATA, "w"));
+    fclose(fopen(TEMP_OBJ_FILE_RELOCATIONS, "w"));
 
     char template[200];
 
@@ -1836,36 +1843,6 @@ bool code_work() {
     competition(TEMP_OBJ_FILE_NAME, 0x90);
     raw_data = getFileSize(TEMP_OBJ_FILE_NAME);
 
-    fileHeader.Machine = 0x8664;
-    fileHeader.NumberOfSections = 0x0003;
-    fileHeader.TimeDateStamp = 0x00000000;
-    fileHeader.PointerToSymbolTable =  0x000000dc;
-    fileHeader.NumberOfSymbols =  0x0000000C;
-    fileHeader.SizeOfOptionalHeader = 0x0000;
-    fileHeader.Characteristics = 0x0005;
-
-    add_coff_header();
-
-    text.physical_address = 0x00000000;
-    text.virtual_address  = 0x00000000;
-    text.size_of_raw_data = raw_data;
-    text.file_pointer_to_raw_data =  0x0000008c; // !!!!
-    text.file_pointer_to_relocation_table = 0x0000016c; // !!!!
-    text.file_pointer_to_line_numbers = 0x00000000;
-    text.number_of_relocations = 0x0008;
-    text.number_of_line_numbers = 0x0000;
-    text.flags = 0x60500020;
-
-    uint32_t hex_local_l = 0x2E; // name .
-    appendToFile(OBJ_FILE_NAME, &hex_local_l, 1);
-    hex_local_l = 0x74786574; // name text
-    appendToFile(OBJ_FILE_NAME, &hex_local_l, 4);
-
-    hex_local_l = 0x000000; // name ____
-    appendToFile(OBJ_FILE_NAME, &hex_local_l, 3);
-
-    add_section_header(text);
-
     SymbolEntry symbolEntry = {
             .s_name = ".file",
             .s_value = 0x00000000,
@@ -1893,7 +1870,7 @@ bool code_work() {
         SymbolEntry symbolEntryVar;
         strcpy(symbolEntryVar.s_name, hex_values_l[k].name);
         symbolEntryVar.s_value = hex_values_l[k].addr;
-        symbolEntryVar.s_section = 0x02;
+        symbolEntryVar.s_section = 0x0002;
         symbolEntryVar.s_storage_class = 0x03;
         symbolEntryVar.s_num_aux = 0x00;
         add_symbol_table(symbolEntryVar);
@@ -1926,8 +1903,130 @@ bool code_work() {
 
     add_symbol_table(symbolEntry_dz);
 
+    SymbolEntry symbolEntry_text = {
+            .s_name = ".text",
+            .s_value = 0x00000000,
+            .s_section = 0x0001,
+            .s_type = 0x0000,
+            .s_storage_class = 0x03,
+            .s_num_aux = 0x01
+    };
+
+    add_symbol_table(symbolEntry_text);
+
+    SymbolEntry symbolEntry_bd = {
+            .s_name = "BD",
+            .s_value = 0x00000000,
+            .s_section = 0x0000,
+            .s_type = 0x0000,
+            .s_storage_class = 0x00,
+            .s_num_aux = 0x00
+    };
+
+    add_symbol_table(symbolEntry_bd);
+
+    SymbolEntry symbolEntry_data = {
+            .s_name = ".data",
+            .s_value = 0x00000000,
+            .s_section = 0x0002,
+            .s_type = 0x0000,
+            .s_storage_class = 0x03,
+            .s_num_aux = 0x01
+    };
+
+    add_symbol_table(symbolEntry_data);
+
+    SymbolEntry symbolEntry_dd = {
+            .s_name = "1d",
+            .s_value = 0x00000000,
+            .s_section = 0x0000,
+            .s_type = 0x0000,
+            .s_storage_class = 0x00,
+            .s_num_aux = 0x00
+    };
+
+    add_symbol_table(symbolEntry_dd);
+
+    SymbolEntry symbolEntry_bss = {
+            .s_name = ".bss",
+            .s_value = 0x00000000,
+            .s_section = 0x0003,
+            .s_type = 0x0000,
+            .s_storage_class = 0x03,
+            .s_num_aux = 0x01
+    };
+
+    add_symbol_table(symbolEntry_bss);
+
+    SymbolEntry symbolEntry_null = {
+            .s_name = 0x0000000000000000,
+            .s_value = 0x00000000,
+            .s_section = 0x0000,
+            .s_type = 0x0000,
+            .s_storage_class = 0x00,
+            .s_num_aux = 0x00
+    };
+
+    add_symbol_table(symbolEntry_null);
+
+
+    SymbolEntry symbolEntry_main = {
+            .s_name = "main",
+            .s_value = 0x00000003,
+            .s_section = 0x0001,
+            .s_type = 0x0000,
+            .s_storage_class = 0x02,
+            .s_num_aux = 0x00
+    };
+
+    add_symbol_table(symbolEntry_main);
+
+    SymbolEntry symbolEntry_print = {
+            .s_name = "print",
+            .s_value = 0x00000000,
+            .s_section = 0x0001,
+            .s_type = 0x0000,
+            .s_storage_class = 0x02,
+            .s_num_aux = 0x00
+    };
+
+    add_symbol_table(symbolEntry_print);
+
     long code_count_data = 0;
     code_count_data = getFileSize(TEMP_OBJ_FILE_NAME_DATA);
+
+    long code_count_relocations = 0;
+    code_count_relocations = getFileSize(TEMP_OBJ_FILE_RELOCATIONS);
+
+    fileHeader.Machine = 0x8664;
+    fileHeader.NumberOfSections = 0x0003;
+    fileHeader.TimeDateStamp = 0x00000000;
+    fileHeader.PointerToSymbolTable =  raw_data+code_count_data + code_count_relocations + 12 + (48*3);
+    fileHeader.NumberOfSymbols =  0x0000000C;
+    fileHeader.SizeOfOptionalHeader = 0x0000;
+    fileHeader.Characteristics = 0x0005;
+
+    add_coff_header();
+
+    text.physical_address = 0x00000000;
+    text.virtual_address  = 0x00000000;
+    text.size_of_raw_data = raw_data;
+    text.file_pointer_to_raw_data =  0x0000008c; // !!!!
+    text.file_pointer_to_relocation_table = raw_data+code_count_data+1;
+    text.file_pointer_to_line_numbers = 0x00000000;
+    text.number_of_relocations = 0x0008;
+    text.number_of_line_numbers = 0x0000;
+    text.flags = 0x60500020;
+
+    uint32_t hex_local_l = 0x2E; // name .
+    appendToFile(OBJ_FILE_NAME, &hex_local_l, 1);
+    hex_local_l = 0x74786574; // name text
+    appendToFile(OBJ_FILE_NAME, &hex_local_l, 4);
+
+    hex_local_l = 0x000000; // name ____
+    appendToFile(OBJ_FILE_NAME, &hex_local_l, 3);
+
+    add_section_header(text);
 
     append_bytes_from_file(TEMP_OBJ_FILE_NAME_DATA, TEMP_OBJ_FILE_NAME);
 
@@ -1969,6 +2068,10 @@ bool code_work() {
     appendToFile(OBJ_FILE_NAME, &hex_local_l, 4);
 
     add_section_header(bss);
+
+    competition(TEMP_OBJ_FILE_NAME, 0x00);
+    competition(TEMP_OBJ_FILE_RELOCATIONS, 0x00);
+    competition(TEMP_OBJ_FILE_SYMBOLS, 0x00);
 
     append_bytes_from_file(TEMP_OBJ_FILE_NAME, OBJ_FILE_NAME);
     append_bytes_from_file(TEMP_OBJ_FILE_RELOCATIONS, OBJ_FILE_NAME);
