@@ -8,6 +8,8 @@
 #define FP2BIN_STRING_MAX 1077
 #define OBJ_FILE_NAME "myobj.o"
 #define TEMP_OBJ_FILE_NAME "tmp_myobj"
+#define TEMP_OBJ_FILE_NAME_END "..\\tmp_myobj_end"
+#define TEMP_OBJ_FILE_NAME_DATA "tmp_myobj_data"
 #define TEMP_OBJ_FILE_RELOCATIONS "tmp_myobj_relocations"
 #define TEMP_OBJ_FILE_SYMBOLS "tmp_myobj_symbols"
 
@@ -755,7 +757,7 @@ void appendToFile(const char *filename, const void *data, size_t dataSize) {
         perror("err appendToFile\n");
         return;
     }
-
+//    printf("%x writed to file %s \n", *(const int *)data, filename);
     size_t writtenBytes = fwrite(data, 1, dataSize, file);
     if (writtenBytes != dataSize) {
         perror("err appendToFile\n");
@@ -769,6 +771,8 @@ void appendToFile_little_en(const char *filename, const void *data, size_t size)
         perror("Error opening file");
         return;
     }
+//    printf("%x writed to file %s \n", *(const int *)data, filename);
+
     fwrite(data, sizeof(uint8_t), size, file);
     fclose(file);
 }
@@ -776,7 +780,7 @@ void appendToFile_little_en(const char *filename, const void *data, size_t size)
 struct hex_values{
     char name[1024];
     unsigned char addr;
-    char value[100];
+    long long value;
 };
 
 typedef struct IMAGE_FILE_HEADER {
@@ -821,6 +825,8 @@ typedef struct {
 
 struct hex_values hex_values_l[1024];
 
+
+
 void correct_hex_presentation(char *digit, char *filename) {
     long long decimalNumber = atoll(digit);
 
@@ -830,7 +836,6 @@ void correct_hex_presentation(char *digit, char *filename) {
         return;
     }
 
-    // Запись числа в машинном представлении (8 байт для long long)
     unsigned char hex_bytes[4];
     for (int i = 0; i < 4; i++) {
         hex_bytes[i] = (decimalNumber >> (i * 8)) & 0xFF;
@@ -842,7 +847,16 @@ void correct_hex_presentation(char *digit, char *filename) {
     fclose(file);
 }
 
+void add_relocations_section(RelocationEntry relocationEntry){
+    appendToFile_little_en(TEMP_OBJ_FILE_RELOCATIONS, &relocationEntry.r_offset, 4);
+    appendToFile_little_en(TEMP_OBJ_FILE_RELOCATIONS, &relocationEntry.r_symbol, 4);
+    appendToFile_little_en(TEMP_OBJ_FILE_RELOCATIONS, &relocationEntry.r_type, 2);
+}
+
 int machine_templates(char *op, char *value, int index_vars, int byte_count){
+
+    RelocationEntry relocationEntry;
+
     int hex = 0x0;
     if(strcmp(op, "mov_var_rax_legacy") == 0){
         hex = 0x48;
@@ -851,30 +865,43 @@ int machine_templates(char *op, char *value, int index_vars, int byte_count){
         appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
         hex = 0xc0;
         appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
-        byte_count += 3;
-    }else if(strcmp(op, "mov_var_rax") == 0){
-        hex = 0x48;
-        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
-        hex = 0xC7;
-        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
-        hex = 0xC0;
-        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+    }else if(strcmp(op, "mov_addr_rax") == 0){
         bool found = false;
         for(int i = 0; i < index_vars; i++){
             if(strcmp(hex_values_l[i].name, value) == 0){
+
+                hex = 0x48;
+                appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+                hex = 0x89;
+                appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+                hex = 0x05;
+                appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+
                 char adr[100];
                 memset(adr, '\0', 100);
                 sprintf(adr, "%d", hex_values_l[i].addr);
                 correct_hex_presentation(adr, TEMP_OBJ_FILE_NAME);
                 found = true;
+
+                relocationEntry.r_offset = hex_values_l[i].addr+4;
+                relocationEntry.r_symbol = 0x00000009;
+                relocationEntry.r_type = 0x0004;
+                add_relocations_section(relocationEntry);
                 break;
             }
         }
         if(!found){
+
+            hex = 0x48;
+            appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+            hex = 0xC7;
+            appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+            hex = 0xC0;
+            appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+
             correct_hex_presentation(value, TEMP_OBJ_FILE_NAME);
         }
-        byte_count += 7;
-    }else if(strcmp(op, "mov_rax_var") == 0){
+    }else if(strcmp(op, "mov_rax_addr") == 0){
         hex = 0x48;
         appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
         hex = 0x89;
@@ -889,35 +916,57 @@ int machine_templates(char *op, char *value, int index_vars, int byte_count){
                 sprintf(adr, "%d", hex_values_l[i].addr);
                 correct_hex_presentation(adr, TEMP_OBJ_FILE_NAME);
                 found = true;
+
+                relocationEntry.r_offset = hex_values_l[i].addr+4;
+                relocationEntry.r_symbol = 0x00000009;
+                relocationEntry.r_type = 0x0004;
+                add_relocations_section(relocationEntry);
+
                 break;
             }
         }
         if(!found){
             correct_hex_presentation(value, TEMP_OBJ_FILE_NAME);
         }
-        byte_count += 7;
-    }else if(strcmp(op, "mov_var_rbx") == 0){
-        hex = 0x48;
-        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
-        hex = 0xc7;
-        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
-        hex = 0xc3;
-        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+    }else if(strcmp(op, "mov_addr_rbx") == 0){
+
         bool found = false;
         for(int i = 0; i < index_vars; i++){
             if(strcmp(hex_values_l[i].name, value) == 0){
+
+                hex = 0x48;
+                appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+                hex = 0x8B;
+                appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+                hex = 0x03;
+                appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+
                 char adr[100];
                 memset(adr, '\0', 100);
                 sprintf(adr, "%d", hex_values_l[i].addr);
                 correct_hex_presentation(adr, TEMP_OBJ_FILE_NAME);
                 found = true;
+
+                relocationEntry.r_offset = hex_values_l[i].addr+4;
+                relocationEntry.r_symbol = 0x00000009;
+                relocationEntry.r_type = 0x0004;
+                add_relocations_section(relocationEntry);
+
                 break;
             }
         }
         if(!found){
+
+            hex = 0x48;
+            appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+            hex = 0xC7;
+            appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+            hex = 0xC3;
+            appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+            add_relocations_section(relocationEntry);
+
             correct_hex_presentation(value, TEMP_OBJ_FILE_NAME);
         }
-        byte_count += 7;
     }else if(strcmp(op, "add_rbx_rax") == 0){
         hex = 0x48;
         appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
@@ -925,7 +974,6 @@ int machine_templates(char *op, char *value, int index_vars, int byte_count){
         appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
         hex = 0xC3;
         appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
-        byte_count += 3;
     }else if(strcmp(op, "add_rax_rbx") == 0){
         hex = 0x48;
         appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
@@ -933,13 +981,11 @@ int machine_templates(char *op, char *value, int index_vars, int byte_count){
         appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
         hex = 0xC3;
         appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
-        byte_count += 3;
     }else if(strcmp(op, "sub_rax_rbx") == 0){
         hex = 0x48;
         appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
         hex = 0x29;
         appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
-        byte_count += 2;
     }else if(strcmp(op, "mul_rax") == 0){
         hex = 0x48;
         appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
@@ -947,7 +993,6 @@ int machine_templates(char *op, char *value, int index_vars, int byte_count){
         appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
         hex = 0xE0;
         appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
-        byte_count += 3;
     }else if(strcmp(op, "div_rax") == 0){
         hex = 0x48;
         appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
@@ -955,19 +1000,16 @@ int machine_templates(char *op, char *value, int index_vars, int byte_count){
         appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
         hex = 0xF0;
         appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
-        byte_count += 3;
     }else if(strcmp(op, "jmp_addr") == 0){
         hex = 0xEB;
         appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
 
         correct_hex_presentation(value, TEMP_OBJ_FILE_NAME);
-        byte_count += 5;
     }else if(strcmp(op, "cmp_rax_rbx") == 0){
         hex = 0x48;
         appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
         hex = 0x39;
         appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
-        byte_count += 2;
     }
     printf("COMMAND %s\n", op);
     return byte_count;
@@ -1003,24 +1045,45 @@ void add_section_header(COFFHeader header){
     appendToFile_little_en(OBJ_FILE_NAME, &header.flags, 4);
 }
 
-uint32_t ascii_to_hex(const char *ascii_string) {
-    uint32_t result = 0;
-    for (int i = 0; i < strlen(ascii_string); i++) {
-        uint8_t byte = (uint8_t)ascii_string[i];
-        result = (result << 8) | byte;
-    }
-    return result;
+void add_data_section(struct hex_values hex){
+    appendToFile_little_en(TEMP_OBJ_FILE_NAME_DATA, &hex.value, 8);
 }
 
 void add_symbol_table(SymbolEntry symbolEntry) {
-    uint32_t name = ascii_to_hex(symbolEntry.s_name);
-    appendToFile_little_en(TEMP_OBJ_FILE_SYMBOLS, &name, 8);
-    appendToFile_little_en(TEMP_OBJ_FILE_SYMBOLS, &symbolEntry.s_value, 8);
+//    uint32_t name = ascii_to_hex(symbolEntry.s_name);
+//    appendToFile_little_en(TEMP_OBJ_FILE_SYMBOLS, &name, 8);
+    appendToFile_little_en(TEMP_OBJ_FILE_SYMBOLS, &symbolEntry.s_name, 8);
+    appendToFile_little_en(TEMP_OBJ_FILE_SYMBOLS, &symbolEntry.s_value, 4);
     appendToFile_little_en(TEMP_OBJ_FILE_SYMBOLS, &symbolEntry.s_section, 2);
     appendToFile_little_en(TEMP_OBJ_FILE_SYMBOLS, &symbolEntry.s_type, 2);
     appendToFile_little_en(TEMP_OBJ_FILE_SYMBOLS, &symbolEntry.s_storage_class, 1);
     appendToFile_little_en(TEMP_OBJ_FILE_SYMBOLS, &symbolEntry.s_num_aux, 1);
 }
+
+
+
+long getFileSize(const char *filename) {
+    FILE *file = fopen(filename, "rb");
+    if (file == NULL) {
+        return -1;
+    }
+
+    fseek(file, 0, SEEK_END);
+    long size = ftell(file);
+    fclose(file);
+
+    return size;
+}
+
+void competition(char *path, uint32_t data_rem){
+    long size = getFileSize(path);
+
+    while((size % 16)!= 0){
+        appendToFile_little_en(path, &data_rem, 1);
+        size = getFileSize(path);
+    }
+}
+
 
 bool code_work() {
 
@@ -1032,6 +1095,7 @@ bool code_work() {
     fclose(fopen(OBJ_FILE_NAME, "w"));
     fclose(fopen(TEMP_OBJ_FILE_NAME, "w"));
     fclose(fopen(TEMP_OBJ_FILE_SYMBOLS, "w"));
+    fclose(fopen(TEMP_OBJ_FILE_NAME_DATA, "w"));
 
     char template[200];
 
@@ -1073,17 +1137,17 @@ bool code_work() {
 
                 strcpy(hex_values_l[index_vars].name, def_vars[i].name);
                 hex_values_l[index_vars].addr = max_hex_addr;
-                strcpy(hex_values_l[index_vars].value, "01");
+                hex_values_l[index_vars].value = 1;
                 max_hex_addr+=8;
-                printf("%x | %s | %s\n", hex_values_l[index_vars].addr, hex_values_l[index_vars].value, hex_values_l[index_vars].name);
+//                printf("%x | %s | %s\n", hex_values_l[index_vars].addr, hex_values_l[index_vars].value, hex_values_l[index_vars].name);
                 index_vars++;
             } else if (strcmp(def_vars[i].value, "false") == 0) {
 
                 strcpy(hex_values_l[index_vars].name, def_vars[i].name);
                 hex_values_l[index_vars].addr = max_hex_addr;
-                strcpy(hex_values_l[index_vars].value, "00");
+                hex_values_l[index_vars].value = 0;
                 max_hex_addr+=8;
-                printf("%x | %s | %s\n", hex_values_l[index_vars].addr, hex_values_l[index_vars].value, hex_values_l[index_vars].name);
+//                printf("%x | %d | %s\n", hex_values_l[index_vars].addr, hex_values_l[index_vars].value, hex_values_l[index_vars].name);
                 index_vars++;
             } else {
                 if(strcmp(def_vars[i].value, "")!=0) {
@@ -1100,17 +1164,17 @@ bool code_work() {
 
                     strcpy(hex_values_l[index_vars].name, def_vars[i].name);
                     hex_values_l[index_vars].addr = max_hex_addr;
-                    strcpy(hex_values_l[index_vars].value, hex_tmp);
+                    hex_values_l[index_vars].value = decimalNumber;
                     max_hex_addr+=8;
-                    printf("%x | %s | %s\n", hex_values_l[index_vars].addr, hex_values_l[index_vars].value, hex_values_l[index_vars].name);
+//                    printf("%x | %d | %s\n", hex_values_l[index_vars].addr, hex_values_l[index_vars].value, hex_values_l[index_vars].name);
                     index_vars++;
                 }else{
 
                     strcpy(hex_values_l[index_vars].name, def_vars[i].name);
                     hex_values_l[index_vars].addr = max_hex_addr;
-                    strcpy(hex_values_l[index_vars].value, "00");
+                    hex_values_l[index_vars].value = 0;
                     max_hex_addr+=8;
-                    printf("%x | %s | %s\n", hex_values_l[index_vars].addr, hex_values_l[index_vars].value, hex_values_l[index_vars].name);
+//                    printf("%x | %d | %s\n", hex_values_l[index_vars].addr, hex_values_l[index_vars].value, hex_values_l[index_vars].name);
                     index_vars++;
                 }
             }
@@ -1271,7 +1335,7 @@ bool code_work() {
                                             memset(adr, '\0', 100);
                                             sprintf(adr, "%d", s_a[index_stack - 1]);
 
-                                            byte_count = machine_templates("mov_var_rax", adr, index_vars, byte_count);
+                                            byte_count = machine_templates("mov_addr_rax", adr, index_vars, byte_count);
 
                                         }
                                         if (strcmp(stack_asm[index_stack - 0], "") != 0) {
@@ -1283,13 +1347,13 @@ bool code_work() {
                                             memset(adr, '\0', 100);
                                             sprintf(adr, "%d", s_a[index_stack]);
 
-                                            byte_count = machine_templates("mov_var_rbx", adr, index_vars, byte_count);
+                                            byte_count = machine_templates("mov_addr_rbx", adr, index_vars, byte_count);
 
                                             sprintf(template, "\tadd %rax, %rbx\n"
                                                               "\tmov $0, %rax\n");
 
                                             byte_count = machine_templates("add_rax_rbx", adr, index_vars, byte_count);
-                                            byte_count = machine_templates("mov_var_rax", "0", 0, byte_count);
+                                            byte_count = machine_templates("mov_addr_rax", "0", 0, byte_count);
 //                                            correct_hex_presentation("0", TEMP_OBJ_FILE_NAME);
 //                                            byte_count+=4;
 
@@ -1372,7 +1436,7 @@ bool code_work() {
 
                                             sprintf(template, "\tmov %rbx, %rcx\n"
                                                               "\tcmp $0, %rcx\n"
-                                                              "\tje division_by_zero\n"
+                                                              "\tje dz\n"
                                                               "\tdiv %rcx\n"
                                                               "\txor %rdx, %rdx\n"
                                                               "\tmov $0, %rcx\n"
@@ -1394,7 +1458,7 @@ bool code_work() {
                                                 strcat(result, template);
                                                 memset(template, '\0', sizeof(template));
                                                 sprintf(template, "\tcmp $0, %rcx\n"
-                                                                  "\tje division_by_zero\n"
+                                                                  "\tje dz\n"
                                                                   "\txor %rdx, %rdx\n"
                                                                   "\tdiv %rcx\n"
 //                                                                           "\tadd %rax, %rbx\n "
@@ -1415,7 +1479,7 @@ bool code_work() {
                                             sprintf(template, "mov %rbx, %rax"
                                                               "\tmov %s, %rcx\n"
                                                               "\tcmp $0, %rcx\n"
-                                                              "\tje division_by_zero\n"
+                                                              "\tje dz\n"
                                                               "\txor %rdx, %rdx\n"
                                                               "\tmov %rax, %rbx\n"
                                                               "\tmov $0, %rax\n", stack_asm[index_stack]);
@@ -1518,15 +1582,15 @@ bool code_work() {
                                                           "\tmov $0, %crax\n", postfix, '%', '%', variable, '%','%');
 
 
-                            byte_count = machine_templates("mov_var_rax", postfix, index_vars, byte_count);
+                            byte_count = machine_templates("mov_addr_rax", postfix, index_vars, byte_count);
 //                            correct_hex_presentation(postfix, TEMP_OBJ_FILE_NAME);
 //                            byte_count+=4;
 
-                            byte_count = machine_templates("mov_rax_var", variable, index_vars, byte_count);
+                            byte_count = machine_templates("mov_rax_addr", variable, index_vars, byte_count);
 //                            correct_hex_presentation(postfix, TEMP_OBJ_FILE_NAME);
 //                            byte_count+=4;
 
-                            byte_count = machine_templates("mov_var_rax", "0", 0, byte_count);
+                            byte_count = machine_templates("mov_addr_rax", "0", 0, byte_count);
 //                            correct_hex_presentation("0", TEMP_OBJ_FILE_NAME);
 //                            byte_count+=4;
 
@@ -1765,6 +1829,12 @@ bool code_work() {
     if(byte_count%16!=0){
         raw_data+=10;
     }
+    long code_count_text = 0;
+    code_count_text = (getFileSize(TEMP_OBJ_FILE_NAME));
+
+    append_bytes_from_file(TEMP_OBJ_FILE_NAME_END, TEMP_OBJ_FILE_NAME);
+    competition(TEMP_OBJ_FILE_NAME, 0x90);
+    raw_data = getFileSize(TEMP_OBJ_FILE_NAME);
 
     fileHeader.Machine = 0x8664;
     fileHeader.NumberOfSections = 0x0003;
@@ -1796,10 +1866,75 @@ bool code_work() {
 
     add_section_header(text);
 
+    SymbolEntry symbolEntry = {
+            .s_name = ".file",
+            .s_value = 0x00000000,
+            .s_section = 0xfffe,
+            .s_type = 0x0000,
+            .s_storage_class = 0x67,
+            .s_num_aux = 0x01
+    };
+
+    add_symbol_table(symbolEntry);
+
+    SymbolEntry symbolEntry_fake = {
+            .s_name = "fake",
+            .s_value = 0x00000000,
+            .s_section = 0x0000,
+            .s_type = 0x0000,
+            .s_storage_class = 0x00,
+            .s_num_aux = 0x00
+    };
+
+    add_symbol_table(symbolEntry_fake);
+
+
+    for(int k = 0; k < index_vars; k++){
+        SymbolEntry symbolEntryVar;
+        strcpy(symbolEntryVar.s_name, hex_values_l[k].name);
+        symbolEntryVar.s_value = hex_values_l[k].addr;
+        symbolEntryVar.s_section = 0x02;
+        symbolEntryVar.s_storage_class = 0x03;
+        symbolEntryVar.s_num_aux = 0x00;
+        add_symbol_table(symbolEntryVar);
+
+        add_data_section(hex_values_l[k]);
+    }
+    char* format_data = "%lld";
+    appendToFile_little_en(TEMP_OBJ_FILE_NAME_DATA, format_data, 4);
+
+    competition(TEMP_OBJ_FILE_NAME_DATA, 0x00);
+
+    SymbolEntry symbolEntry_ep = {
+            .s_name = "ep",
+            .s_value = code_count_text,
+            .s_section = 0x0001,
+            .s_type = 0x0000,
+            .s_storage_class = 0x06,
+            .s_num_aux = 0x00
+    };
+    add_symbol_table(symbolEntry_ep);
+
+    SymbolEntry symbolEntry_dz = {
+            .s_name = "dz",
+            .s_value = code_count_text+13,
+            .s_section = 0x0001,
+            .s_type = 0x0000,
+            .s_storage_class = 0x06,
+            .s_num_aux = 0x00
+    };
+
+    add_symbol_table(symbolEntry_dz);
+
+    long code_count_data = 0;
+    code_count_data = getFileSize(TEMP_OBJ_FILE_NAME_DATA);
+
+    append_bytes_from_file(TEMP_OBJ_FILE_NAME_DATA, TEMP_OBJ_FILE_NAME);
+
     data.physical_address = 0x00000000;
     data.virtual_address  = 0x00000000;
     data.size_of_raw_data = 0x00000020;
-    data.file_pointer_to_raw_data =  raw_data + 20; // !!!!
+    data.file_pointer_to_raw_data =  raw_data + code_count_data; // !!!!
     data.file_pointer_to_relocation_table = 0x00000000;
     data.file_pointer_to_line_numbers = 0x00000000;
     data.number_of_relocations = 0x0000;
@@ -1836,28 +1971,10 @@ bool code_work() {
     add_section_header(bss);
 
     append_bytes_from_file(TEMP_OBJ_FILE_NAME, OBJ_FILE_NAME);
+    append_bytes_from_file(TEMP_OBJ_FILE_RELOCATIONS, OBJ_FILE_NAME);
+    append_bytes_from_file(TEMP_OBJ_FILE_SYMBOLS, OBJ_FILE_NAME);
 
-    SymbolEntry symbolEntry = {
-        .s_name = ".file",
-        .s_value = 0x00000000,
-        .s_section = 0x02,
-        .s_type = 0x01,
-        .s_storage_class = 0x01,
-        .s_num_aux = 0x00
-    };
 
-    add_symbol_table(symbolEntry);
-
-    for(int k = 0; k < index_vars; k++){
-        SymbolEntry symbolEntryVar;
-        strcpy(symbolEntryVar.s_name, hex_values_l[k].name);
-        symbolEntryVar.s_value = hex_values_l[k].addr;
-        symbolEntryVar.s_section = 0x01;
-        symbolEntryVar.s_storage_class = 0x02;
-        symbolEntryVar.s_num_aux = 0x00;
-
-        add_symbol_table(symbolEntryVar);
-    }
 //hex_values_l[index_vars]
     strcat(result,
                    "\tmovl\t$0, %eax\n"
@@ -1866,14 +1983,14 @@ bool code_work() {
                    "\n"
                    "\tret");
 
-    strcat(result, "\nend_program:\n"
+    strcat(result, "\nep:\n"
                    "\tmov $0, %rax\n"
                    "\taddq $48, %rsp\n"
                    "\tpopq %rbp\n"
                    "\tret\n"
-                   "division_by_zero:\n"
+                   "dz:\n"
                    "\tmov $1, %rbx \n"
-                   "\tjmp end_program\n"
+                   "\tjmp ep\n"
                    "\tmov $0, %rax\n"
                    "\tmov $0, %rbx\n");
 
