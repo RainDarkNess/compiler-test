@@ -13,10 +13,9 @@
 program var
 
 # Объявление переменных #
-a:int;
+aq, uu:int;
 
 # Начало работы программы #
 begin
-;a assign 12
-
+;aq assign 12
 end..

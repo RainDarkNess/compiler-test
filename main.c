@@ -777,6 +777,20 @@ void appendToFile_little_en(const char *filename, const void *data, size_t size)
     fclose(file);
 }
 
+long getFileSize(const char *filename) {
+    FILE *file = fopen(filename, "rb");
+    if (file == NULL) {
+        return -1;
+    }
+
+    fseek(file, 0, SEEK_END);
+    long size = ftell(file);
+    fclose(file);
+
+    return size;
+}
+
+
 struct hex_values{
     char name[1024];
     unsigned char addr;
@@ -852,8 +866,7 @@ void add_relocations_section(RelocationEntry relocationEntry){
     appendToFile_little_en(TEMP_OBJ_FILE_RELOCATIONS, &relocationEntry.r_symbol, 4);
     appendToFile_little_en(TEMP_OBJ_FILE_RELOCATIONS, &relocationEntry.r_type, 2);
 }
-
-int machine_templates(char *op, char *value, int index_vars, int byte_count){
+int machine_templates(char *op, char *value, int index_vars, int relocation_count){
 
     RelocationEntry relocationEntry;
 
@@ -876,16 +889,20 @@ int machine_templates(char *op, char *value, int index_vars, int byte_count){
                 appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
                 hex = 0x05;
                 appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+//                long code_count = (getFileSize(TEMP_OBJ_FILE_NAME)/16)*10;
 
                 char adr[100];
                 memset(adr, '\0', 100);
                 sprintf(adr, "%d", hex_values_l[i].addr);
                 correct_hex_presentation(adr, TEMP_OBJ_FILE_NAME);
                 found = true;
+                long code_count = getFileSize(TEMP_OBJ_FILE_NAME);
 
-                relocationEntry.r_offset = hex_values_l[i].addr+4;
-                relocationEntry.r_symbol = 0x00000009;
+//                relocationEntry.r_offset = hex_values_l[i].addr + (code_count_sub - code_count - 2) + code_count;
+                relocationEntry.r_offset = code_count + 3;
+                relocationEntry.r_symbol = index_vars + 6;
                 relocationEntry.r_type = 0x0004;
+                relocation_count++;
                 add_relocations_section(relocationEntry);
                 break;
             }
@@ -908,6 +925,9 @@ int machine_templates(char *op, char *value, int index_vars, int byte_count){
         appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
         hex = 0x05;
         appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+//        long code_count = (getFileSize(TEMP_OBJ_FILE_NAME)/16)*10;
+//        long code_count_sub = getFileSize(TEMP_OBJ_FILE_NAME);
+
         bool found = false;
         for(int i = 0; i < index_vars; i++){
             if(strcmp(hex_values_l[i].name, value) == 0){
@@ -917,10 +937,14 @@ int machine_templates(char *op, char *value, int index_vars, int byte_count){
                 correct_hex_presentation(adr, TEMP_OBJ_FILE_NAME);
                 found = true;
 
-                relocationEntry.r_offset = hex_values_l[i].addr+4;
-                relocationEntry.r_symbol = 0x00000009;
+                long code_count = getFileSize(TEMP_OBJ_FILE_NAME);
+
+//                relocationEntry.r_offset = hex_values_l[i].addr + (code_count_sub - code_count - 2) + code_count;
+                relocationEntry.r_offset = code_count + 3;
+                relocationEntry.r_symbol = index_vars + 6;
                 relocationEntry.r_type = 0x0004;
                 add_relocations_section(relocationEntry);
+                relocation_count++;
 
                 break;
             }
@@ -940,6 +964,8 @@ int machine_templates(char *op, char *value, int index_vars, int byte_count){
                 appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
                 hex = 0x03;
                 appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+//                long code_count = (getFileSize(TEMP_OBJ_FILE_NAME)/16)*10;
+//                long code_count_sub = getFileSize(TEMP_OBJ_FILE_NAME);
 
                 char adr[100];
                 memset(adr, '\0', 100);
@@ -947,10 +973,14 @@ int machine_templates(char *op, char *value, int index_vars, int byte_count){
                 correct_hex_presentation(adr, TEMP_OBJ_FILE_NAME);
                 found = true;
 
-                relocationEntry.r_offset = hex_values_l[i].addr+4;
-                relocationEntry.r_symbol = 0x00000009;
+                long code_count = getFileSize(TEMP_OBJ_FILE_NAME);
+
+//                relocationEntry.r_offset = hex_values_l[i].addr + (code_count_sub - code_count - 2) + code_count;
+                relocationEntry.r_offset = code_count + 3;
+                relocationEntry.r_symbol = index_vars+6;
                 relocationEntry.r_type = 0x0004;
                 add_relocations_section(relocationEntry);
+                relocation_count++;
 
                 break;
             }
@@ -1012,7 +1042,7 @@ int machine_templates(char *op, char *value, int index_vars, int byte_count){
         appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
     }
     printf("COMMAND %s\n", op);
-    return byte_count;
+    return relocation_count;
 }
 
 
@@ -1050,8 +1080,7 @@ void add_data_section(struct hex_values hex){
 }
 
 void add_symbol_table(SymbolEntry symbolEntry) {
-//    uint32_t name = ascii_to_hex(symbolEntry.s_name);
-//    appendToFile_little_en(TEMP_OBJ_FILE_SYMBOLS, &name, 8);
+
     appendToFile_little_en(TEMP_OBJ_FILE_SYMBOLS, &symbolEntry.s_name, strlen(symbolEntry.s_name));
     unsigned long long size_str = strlen(symbolEntry.s_name);
     uint32_t null_hex = 0x00;
@@ -1068,18 +1097,6 @@ void add_symbol_table(SymbolEntry symbolEntry) {
 
 
 
-long getFileSize(const char *filename) {
-    FILE *file = fopen(filename, "rb");
-    if (file == NULL) {
-        return -1;
-    }
-
-    fseek(file, 0, SEEK_END);
-    long size = ftell(file);
-    fclose(file);
-
-    return size;
-}
 
 void competition(char *path, uint32_t data_rem){
     long size = getFileSize(path);
@@ -1105,7 +1122,7 @@ bool code_work() {
     fclose(fopen(TEMP_OBJ_FILE_RELOCATIONS, "w"));
 
     char template[200];
-
+    int relocation_count = 0;
     memset(template, '\0', sizeof(template));
     char hexval[1024];
 
@@ -1137,7 +1154,7 @@ bool code_work() {
     byte_count+=11;
     // init variables
     int index_vars = 0;
-    int max_hex_addr = 0x0;
+    int max_hex_addr = 0;
     printf("adress | value | name \n");
     for (int i = 0; i < vars_count; i++) {
             if (strcmp(def_vars[i].value, "true") == 0) {
@@ -1342,11 +1359,11 @@ bool code_work() {
                                             memset(adr, '\0', 100);
                                             sprintf(adr, "%d", s_a[index_stack - 1]);
 
-                                            byte_count = machine_templates("mov_addr_rax", adr, index_vars, byte_count);
+                                            relocation_count = machine_templates("mov_addr_rax", adr, index_vars, relocation_count);
 
                                         }
                                         if (strcmp(stack_asm[index_stack - 0], "") != 0) {
-                                            sprintf(template, "\tmov %s, %rbx\n", stack_asm[index_stack - 0]);
+                                            sprintf(template, "\tadd %s, %rbx\n", stack_asm[index_stack - 0]);
                                             strcat(result, template);
                                             memset(template, '\0', sizeof(template));
 
@@ -1354,13 +1371,13 @@ bool code_work() {
                                             memset(adr, '\0', 100);
                                             sprintf(adr, "%d", s_a[index_stack]);
 
-                                            byte_count = machine_templates("mov_addr_rbx", adr, index_vars, byte_count);
+                                            relocation_count = machine_templates("mov_addr_rbx", adr, index_vars, relocation_count);
 
                                             sprintf(template, "\tadd %rax, %rbx\n"
                                                               "\tmov $0, %rax\n");
 
-                                            byte_count = machine_templates("add_rax_rbx", adr, index_vars, byte_count);
-                                            byte_count = machine_templates("mov_addr_rax", "0", 0, byte_count);
+                                            relocation_count = machine_templates("add_rax_rbx", adr, index_vars, relocation_count);
+                                            relocation_count = machine_templates("mov_addr_rax", "0", 0, relocation_count);
 //                                            correct_hex_presentation("0", TEMP_OBJ_FILE_NAME);
 //                                            byte_count+=4;
 
@@ -1506,7 +1523,7 @@ bool code_work() {
                                     memset(stack_asm[index_stack - 0], '\0', sizeof(stack_asm[index_stack - 0]));
                                     memset(stack_asm[index_stack - 1], '\0', sizeof(stack_asm[index_stack - 1]));
                                     index_stack -= 2;
-                                } else if (postfix[j] == '-') {
+                                } else if (postfix[j] == '!') {
 
                                     if (was_val) {
                                         if (strcmp(stack_asm[index_stack - 0], "") != 0 &&
@@ -1589,17 +1606,17 @@ bool code_work() {
                                                           "\tmov $0, %crax\n", postfix, '%', '%', variable, '%','%');
 
 
-                            byte_count = machine_templates("mov_addr_rax", postfix, index_vars, byte_count);
+                            relocation_count = machine_templates("mov_addr_rax", postfix, index_vars, relocation_count);
 //                            correct_hex_presentation(postfix, TEMP_OBJ_FILE_NAME);
-//                            byte_count+=4;
+//                            relocation_count+=4;
 
-                            byte_count = machine_templates("mov_rax_addr", variable, index_vars, byte_count);
+                            relocation_count = machine_templates("mov_rax_addr", variable, index_vars, relocation_count);
 //                            correct_hex_presentation(postfix, TEMP_OBJ_FILE_NAME);
-//                            byte_count+=4;
+//                            relocation_count+=4;
 
-                            byte_count = machine_templates("mov_addr_rax", "0", 0, byte_count);
+                            relocation_count = machine_templates("mov_addr_rax", "0", 0, relocation_count);
 //                            correct_hex_presentation("0", TEMP_OBJ_FILE_NAME);
-//                            byte_count+=4;
+//                            relocation_count+=4;
 
                         }else{
                             sprintf(str_ch, "\tmov %s(%crip), %s(%rip)\n", postfix, '%', variable);
@@ -1830,18 +1847,12 @@ bool code_work() {
         }
         tokens = strtok(NULL, ";");
     }
-    raw_data+=(byte_count / 16)*10;
 
-    byte_count = byte_count / 16;
-    if(byte_count%16!=0){
-        raw_data+=10;
-    }
     long code_count_text = 0;
     code_count_text = (getFileSize(TEMP_OBJ_FILE_NAME));
 
     append_bytes_from_file(TEMP_OBJ_FILE_NAME_END, TEMP_OBJ_FILE_NAME);
     competition(TEMP_OBJ_FILE_NAME, 0x90);
-    raw_data = getFileSize(TEMP_OBJ_FILE_NAME);
 
     SymbolEntry symbolEntry = {
             .s_name = ".file",
@@ -1865,20 +1876,35 @@ bool code_work() {
 
     add_symbol_table(symbolEntry_fake);
 
+    char* format_data = "%lld\0\0\0\0";
+    appendToFile_little_en(TEMP_OBJ_FILE_NAME_DATA, format_data, 8);
 
-    for(int k = 0; k < index_vars; k++){
+    if(index_vars > 1) {
+        for (int k = 0; k < index_vars; k++) {
+            SymbolEntry symbolEntryVar;
+            strcpy(symbolEntryVar.s_name, hex_values_l[k].name);
+            symbolEntryVar.s_value = hex_values_l[k].addr;
+            symbolEntryVar.s_section = 0x0002;
+            symbolEntryVar.s_type = 0x0000,
+                    symbolEntryVar.s_storage_class = 0x03;
+            symbolEntryVar.s_num_aux = 0x00;
+            add_symbol_table(symbolEntryVar);
+
+            add_data_section(hex_values_l[k]);
+        }
+    }else{
         SymbolEntry symbolEntryVar;
-        strcpy(symbolEntryVar.s_name, hex_values_l[k].name);
-        symbolEntryVar.s_value = hex_values_l[k].addr;
+        strcpy(symbolEntryVar.s_name, hex_values_l[0].name);
+        symbolEntryVar.s_value = hex_values_l[0].addr;
         symbolEntryVar.s_section = 0x0002;
+        symbolEntryVar.s_type = 0x0000,
         symbolEntryVar.s_storage_class = 0x03;
         symbolEntryVar.s_num_aux = 0x00;
         add_symbol_table(symbolEntryVar);
 
-        add_data_section(hex_values_l[k]);
+        add_data_section(hex_values_l[0]);
     }
-    char* format_data = "%lld";
-    appendToFile_little_en(TEMP_OBJ_FILE_NAME_DATA, format_data, 4);
+
 
     competition(TEMP_OBJ_FILE_NAME_DATA, 0x00);
 
@@ -1915,7 +1941,7 @@ bool code_work() {
     add_symbol_table(symbolEntry_text);
 
     SymbolEntry symbolEntry_bd = {
-            .s_name = "BD",
+            .s_name = "bd",
             .s_value = 0x00000000,
             .s_section = 0x0000,
             .s_type = 0x0000,
@@ -1981,28 +2007,45 @@ bool code_work() {
 
     add_symbol_table(symbolEntry_main);
 
-    SymbolEntry symbolEntry_print = {
-            .s_name = "print",
-            .s_value = 0x00000000,
-            .s_section = 0x0001,
-            .s_type = 0x0000,
-            .s_storage_class = 0x02,
-            .s_num_aux = 0x00
+//    SymbolEntry symbolEntry_print = {
+//            .s_name = "print",
+//            .s_value = 0x00000000,
+//            .s_section = 0x0001,
+//            .s_type = 0x0000,
+//            .s_storage_class = 0x02,
+//            .s_num_aux = 0x00
+//    };
+
+    uint8_t machine_code[] = {
+            0x70, 0x72, 0x69, 0x6E, 0x74, 0x66, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x00
     };
 
+    SymbolEntry symbolEntry_print;
+    memcpy(&symbolEntry_print, machine_code, sizeof(SymbolEntry));
+
     add_symbol_table(symbolEntry_print);
+
+    uint32_t hex_local_l = 0x00000004;
+    appendToFile(TEMP_OBJ_FILE_SYMBOLS, &hex_local_l, 4);
+
+    competition(TEMP_OBJ_FILE_NAME, 0x00);
+    competition(TEMP_OBJ_FILE_RELOCATIONS, 0x00);
+    competition(TEMP_OBJ_FILE_SYMBOLS, 0x00);
 
     long code_count_data = 0;
     code_count_data = getFileSize(TEMP_OBJ_FILE_NAME_DATA);
 
     long code_count_relocations = 0;
     code_count_relocations = getFileSize(TEMP_OBJ_FILE_RELOCATIONS);
+    raw_data = getFileSize(TEMP_OBJ_FILE_NAME);
+    append_bytes_from_file(TEMP_OBJ_FILE_NAME_DATA, TEMP_OBJ_FILE_NAME);
 
     fileHeader.Machine = 0x8664;
     fileHeader.NumberOfSections = 0x0003;
     fileHeader.TimeDateStamp = 0x00000000;
-    fileHeader.PointerToSymbolTable =  raw_data+code_count_data + code_count_relocations + 12 + (48*3);
-    fileHeader.NumberOfSymbols =  0x0000000C;
+    fileHeader.PointerToSymbolTable =  raw_data + code_count_data + code_count_relocations - 4 + (48*3);
+    fileHeader.NumberOfSymbols =  index_vars + 12;
     fileHeader.SizeOfOptionalHeader = 0x0000;
     fileHeader.Characteristics = 0x0005;
 
@@ -2012,13 +2055,13 @@ bool code_work() {
     text.virtual_address  = 0x00000000;
     text.size_of_raw_data = raw_data;
     text.file_pointer_to_raw_data =  0x0000008c; // !!!!
-    text.file_pointer_to_relocation_table = raw_data+code_count_data+1;
+    text.file_pointer_to_relocation_table = 0x0000008c+raw_data+code_count_data;
     text.file_pointer_to_line_numbers = 0x00000000;
-    text.number_of_relocations = 0x0008;
+    text.number_of_relocations = relocation_count;
     text.number_of_line_numbers = 0x0000;
     text.flags = 0x60500020;
 
-    uint32_t hex_local_l = 0x2E; // name .
+    hex_local_l = 0x2E; // name .
     appendToFile(OBJ_FILE_NAME, &hex_local_l, 1);
     hex_local_l = 0x74786574; // name text
     appendToFile(OBJ_FILE_NAME, &hex_local_l, 4);
@@ -2028,12 +2071,11 @@ bool code_work() {
 
     add_section_header(text);
 
-    append_bytes_from_file(TEMP_OBJ_FILE_NAME_DATA, TEMP_OBJ_FILE_NAME);
 
     data.physical_address = 0x00000000;
     data.virtual_address  = 0x00000000;
-    data.size_of_raw_data = 0x00000020;
-    data.file_pointer_to_raw_data =  raw_data + code_count_data; // !!!!
+    data.size_of_raw_data = code_count_data;
+    data.file_pointer_to_raw_data = 0x0000008c + raw_data; // !!!!
     data.file_pointer_to_relocation_table = 0x00000000;
     data.file_pointer_to_line_numbers = 0x00000000;
     data.number_of_relocations = 0x0000;
@@ -2069,14 +2111,12 @@ bool code_work() {
 
     add_section_header(bss);
 
-    competition(TEMP_OBJ_FILE_NAME, 0x00);
-    competition(TEMP_OBJ_FILE_RELOCATIONS, 0x00);
-    competition(TEMP_OBJ_FILE_SYMBOLS, 0x00);
 
     append_bytes_from_file(TEMP_OBJ_FILE_NAME, OBJ_FILE_NAME);
     append_bytes_from_file(TEMP_OBJ_FILE_RELOCATIONS, OBJ_FILE_NAME);
     append_bytes_from_file(TEMP_OBJ_FILE_SYMBOLS, OBJ_FILE_NAME);
 
+    competition(OBJ_FILE_NAME, 0x00);
 
 //hex_values_l[index_vars]
     strcat(result,
