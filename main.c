@@ -1071,7 +1071,7 @@ int machine_templates(char *op, char *value, int index_vars, int relocation_coun
             appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
             hex = 0xC1;
             appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
-            add_relocations_section(relocationEntry);
+//            add_relocations_section(relocationEntry);
 
             correct_hex_presentation(value, TEMP_OBJ_FILE_NAME);
         }
@@ -1160,6 +1160,30 @@ int machine_templates(char *op, char *value, int index_vars, int relocation_coun
         appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
         hex = 0x39;
         appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+    }else if(strcmp(op, "mov_rax_rcx") == 0){
+        hex = 0x48;
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+        hex = 0x89;
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+        hex = 0xC1;
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+    }else if(strcmp(op, "print") == 0){
+        hex = 0xE8;
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+        long code_count = getFileSize(TEMP_OBJ_FILE_NAME);
+        hex = 0x00;
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+        hex = 0x00;
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+        hex = 0x00;
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+        hex = 0x00;
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+        relocationEntry.r_offset = code_count;
+        relocationEntry.r_symbol = index_vars + 11;
+        relocationEntry.r_type = 0x0004;
+        add_relocations_section(relocationEntry);
+        relocation_count++;
     }
     printf("COMMAND %s\n", op);
     return relocation_count;
@@ -1961,6 +1985,8 @@ bool code_work() {
                 memset(template, '\0', sizeof(template));
                 relocation_count = machine_templates("mov_addr_rcx", 0x00, 0, relocation_count);
                 relocation_count = machine_templates("lea_addr", 0x00, index_vars, relocation_count);
+                relocation_count = machine_templates("mov_rax_rcx", 0x00, 0, relocation_count);
+                relocation_count = machine_templates("print", 0x00, index_vars, relocation_count);
             }
         }
             get_buffer_from_token(tokens, buffer[0], buffer[1]);
