@@ -13,9 +13,12 @@
 program var
 
 # Объявление переменных #
-aq, uu:int;
+aq, uu, kkkkk, qeq, dasda:int;
 
 # Начало работы программы #
 begin
+;kkkkk assign 12
+;uu assign 12
+;displ uu
 ;aq assign 12
 end..
