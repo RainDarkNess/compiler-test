@@ -14,12 +14,13 @@ program var
 
 # Объявление переменных #
 aq, uu, kkkkk, qeq, dasda:int;
-
+fl:float;
 # Начало работы программы #
 begin
 ;uu assign 22
 ;aq assign 1
-;uu assign 2 * 12 * 3 * 5 * 10 | 2 | 4
-;displ uu
+;fl assign 1.1
+;fl assign 2 * 3 / 3
+;displ fl
 ;aq assign 12
 end..

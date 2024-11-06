@@ -1293,6 +1293,13 @@ int machine_templates(char *op, char *value, int index_vars, int relocation_coun
         appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
         hex = 0xC3;
         appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+    }else if(strcmp(op, "mov_rbx_rcx") == 0){
+        hex = 0x48;
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+        hex = 0x89;
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+        hex = 0xD9;
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
     }else if(strcmp(op, "add_rax_rbx") == 0){
         hex = 0x48;
         appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
@@ -1326,6 +1333,13 @@ int machine_templates(char *op, char *value, int index_vars, int relocation_coun
         appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
         hex = 0xF0;
         appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+    }else if(strcmp(op, "div_rcx") == 0){
+        hex = 0x48;
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+        hex = 0xF7;
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+        hex = 0xF1;
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
     }else if(strcmp(op, "jmp_addr") == 0){
         hex = 0xEB;
         appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
@@ -1336,12 +1350,60 @@ int machine_templates(char *op, char *value, int index_vars, int relocation_coun
         appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
         hex = 0x39;
         appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+    }else if(strcmp(op, "cmp_addr_rcx") == 0){
+
+        bool found = false;
+        for(int i = 0; i < index_vars; i++){
+            if(strcmp(hex_values_l[i].name, value) == 0){
+
+                hex = 0x48;
+                appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+                hex = 0x3B;
+                appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+                hex = 0x0D;
+                appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+
+                char adr[100];
+                memset(adr, '\0', 100);
+                sprintf(adr, "%d", hex_values_l[i].addr);
+                long code_count = getFileSize(TEMP_OBJ_FILE_NAME);
+                correct_hex_presentation(adr, TEMP_OBJ_FILE_NAME);
+                found = true;
+
+                relocationEntry.r_offset = code_count;
+                relocationEntry.r_symbol = index_vars + 6;
+                relocationEntry.r_type = 0x0004;
+                add_relocations_section(relocationEntry);
+                relocation_count++;
+
+                break;
+            }
+        }
+        if(!found){
+
+            hex = 0x48;
+            appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+            hex = 0x83;
+            appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+            hex = 0xF9;
+            appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+            add_relocations_section(relocationEntry);
+
+            correct_hex_presentation(value, TEMP_OBJ_FILE_NAME);
+        }
     }else if(strcmp(op, "mov_rax_rcx") == 0){
         hex = 0x48;
         appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
         hex = 0x89;
         appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
         hex = 0xC1;
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+    }else if(strcmp(op, "xor_rdx_rdx") == 0){
+        hex = 0x48;
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+        hex = 0x31;
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+        hex = 0xD2;
         appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
     }else if(strcmp(op, "print") == 0){
         hex = 0xE8;
@@ -1645,7 +1707,6 @@ bool code_work() {
                                 if(!was_val)
                                     index_stack--;
                                 if (postfix[j] == '|') {
-//                                    index_stack--;
                                     if (strcmp(s_a[index_stack - 1], "") != 0 && strcmp(s_a[index_stack - 0], "") != 0) {
 
                                         relocation_count = machine_templates("mov_addr_rax", s_a[index_stack - 1], index_vars, relocation_count);
@@ -1664,7 +1725,6 @@ bool code_work() {
                                             relocation_count = machine_templates("add_addr_rbx", s_a[index_stack], index_vars, relocation_count);
                                             memset(s_a[index_stack - 0], '\0', 1024);
                                         }
-//                                        relocation_count = machine_templates("add_rax_rcx", 0x00, 0, relocation_count);
                                     }
 
                                 } else if (postfix[j] == '*') {
@@ -1678,7 +1738,6 @@ bool code_work() {
                                         memset(s_a[index_stack - 0], '\0', 1024);
                                         memset(s_a[index_stack - 1], '\0', 1024);
                                     } else {
-//                                        index_stack--;
                                         if (strcmp(s_a[index_stack - 1], "") != 0) {
                                             relocation_count = machine_templates("mov_addr_rax", s_a[index_stack - 1], index_vars, relocation_count);
                                             memset(s_a[index_stack - 1], '\0', 1024);
@@ -1693,81 +1752,36 @@ bool code_work() {
                                         memset(s_a, '\0', 100);
                                         index_stack = 0;
                                     }
-//                                    was_val = false;
-//                                    relocation_count = machine_templates("add_rbx_rdx", 0x00, index_vars, relocation_count);
 
                                 } else if (postfix[j] == '/') {
-                                    if (was_val) {
-                                        if (strcmp(stack_asm[index_stack - 0], "") != 0 &&
-                                            strcmp(stack_asm[index_stack - 1], "") == 0) {
-                                            sprintf(template, "\tmov %s, %crax\n", stack_asm[index_stack - 0], '%');
-                                            strcat(result, template);
-                                            memset(template, '\0', sizeof(template));
+                                    if (strcmp(s_a[index_stack - 0], "") != 0 && strcmp(s_a[index_stack - 1], "") == 0) {
+                                            relocation_count = machine_templates("mov_addr_rcx", s_a[index_stack - 0], index_vars, relocation_count);
 
-                                            sprintf(template, "\tmov %rbx, %rcx\n"
-                                                              "\tcmp $0, %rcx\n"
-                                                              "\tje dz\n"
-                                                              "\tdiv %rcx\n"
-                                                              "\txor %rdx, %rdx\n"
-                                                              "\tmov $0, %rcx\n"
-                                                              "\tadd %rax, %rbx\n"
-                                                              "\tmov $0, %rax\n");
-                                            strcat(result, template);
-                                            memset(template, '\0', sizeof(template));
-                                            memset(stack_asm[index_stack - 0], '\0',
-                                                   sizeof(stack_asm[index_stack - 0]));
-                                            index_stack -= 1;
-                                        } else {
-                                            if (strcmp(stack_asm[index_stack - 1], "") != 0) {
-                                                sprintf(template, "\tadd %s, %rax\n", stack_asm[index_stack - 1]);
-                                                strcat(result, template);
-                                                memset(template, '\0', sizeof(template));
-                                            }
-                                            if (strcmp(stack_asm[index_stack - 0], "") != 0) {
-                                                sprintf(template, "\tmov %s, %rcx\n", stack_asm[index_stack - 0]);
-                                                strcat(result, template);
-                                                memset(template, '\0', sizeof(template));
-                                                sprintf(template, "\tcmp $0, %rcx\n"
-                                                                  "\tje dz\n"
-                                                                  "\txor %rdx, %rdx\n"
-                                                                  "\tdiv %rcx\n"
-//                                                                           "\tadd %rax, %rbx\n "
-//                                                                           "\tmov $0, %rax\n   "
-                                                );
-                                                strcat(result, template);
-                                                memset(template, '\0', sizeof(template));
-                                            }
-                                            memset(stack_asm[index_stack - 0], '\0',
-                                                   sizeof(stack_asm[index_stack - 0]));
-                                            memset(stack_asm[index_stack - 1], '\0',
-                                                   sizeof(stack_asm[index_stack - 1]));
-                                            index_stack -= 2;
-                                        }
-//                                        was_val = false;
+                                            relocation_count = machine_templates("mov_rbx_rax", 0x00, index_vars, relocation_count);
+                                            relocation_count = machine_templates("div_rcx", 0x00, index_vars, relocation_count);
+                                            relocation_count = machine_templates("xor_rdx_rdx", 0x00, index_vars, relocation_count);
+                                            relocation_count = machine_templates("mov_rax_rbx", 0x00, index_vars, relocation_count);
+                                            relocation_count = machine_templates("mov_addr_rax", "0", index_vars, relocation_count);
+                                            relocation_count = machine_templates("mov_addr_rcx", "0", index_vars, relocation_count);
+
                                     } else {
-                                        if (strcmp(stack_asm[index_stack], "") != 0) {
-                                            sprintf(template, "mov %rbx, %rax"
-                                                              "\tmov %s, %rcx\n"
-                                                              "\tcmp $0, %rcx\n"
-                                                              "\tje dz\n"
-                                                              "\txor %rdx, %rdx\n"
-                                                              "\tmov %rax, %rbx\n"
-                                                              "\tmov $0, %rax\n", stack_asm[index_stack]);
-                                            strcat(result, template);
-                                            memset(template, '\0', sizeof(template));
+                                        if (strcmp(s_a[index_stack - 1], "") != 0) {
+                                            relocation_count = machine_templates("mov_addr_rax", s_a[index_stack - 1], index_vars, relocation_count);
                                         }
-//                                    sprintf(template, "\tadd %rax, %rbx\n", stack_asm[index_stack]);
-//                                    strcat(result, template);
-//                                    memset(template, '\0', sizeof(template));
+                                        if (strcmp(s_a[index_stack - 0], "") != 0) {
+                                            relocation_count = machine_templates("mov_addr_rcx", s_a[index_stack - 0], index_vars, relocation_count);
+                                            relocation_count = machine_templates("xor_rdx_rdx", 0x00, index_vars, relocation_count);
+                                            relocation_count = machine_templates("div_rcx", 0x00, index_vars, relocation_count);
+                                            relocation_count = machine_templates("mov_rax_rbx", 0x00, 0, relocation_count);
 
-                                        sprintf(template, "\tadd %crax, %crbx\n"
-                                                          "\tmov $0, %rax\n");
-                                        strcat(result, template);
-                                        memset(template, '\0', sizeof(template));
+                                        }
+                                        memset(s_a[index_stack - 0], '\0', sizeof(s_a[index_stack - 0]));
+                                        memset(s_a[index_stack - 1], '\0', sizeof(s_a[index_stack - 1]));
+                                        index_stack = 0;
                                     }
-                                    //memset(stack_asm, '\0', sizeof(stack_asm));
-                                    memset(stack_asm[index_stack - 0], '\0', sizeof(stack_asm[index_stack - 0]));
-                                    memset(stack_asm[index_stack - 1], '\0', sizeof(stack_asm[index_stack - 1]));
+
+                                    memset(s_a[index_stack - 0], '\0', sizeof(s_a[index_stack - 0]));
+                                    memset(s_a[index_stack - 1], '\0', sizeof(s_a[index_stack - 1]));
                                     index_stack -= 2;
                                 } else if (postfix[j] == '!') {
 
