@@ -19,8 +19,16 @@ fl:float;
 begin
 ;uu assign 22
 ;aq assign 1
+#;displ aq#
+;aq assign 6 * 6
+;displ aq
+;uu assign 6 ! 2
+#;displ uu#
+;qeq assign 1
+;qeq assign 1 | 2
+#;displ qeq#
 ;fl assign 1.1
-;fl assign 2 * 3 / 3
-;displ fl
+;fl assign 20 ! 10
+#;displ fl#
 ;aq assign 12
 end..
