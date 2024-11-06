@@ -17,9 +17,9 @@ aq, uu, kkkkk, qeq, dasda:int;
 
 # Начало работы программы #
 begin
-;uu assign 12
+;uu assign 22
 ;aq assign 1
-;uu assign   uu | 1 | 2
+;uu assign 2 * 12 * 3 * 5 * 10 | 2 | 4
 ;displ uu
 ;aq assign 12
 end..
