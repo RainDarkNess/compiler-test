@@ -1816,6 +1816,7 @@ bool code_work() {
     bool cycle_while = false;
     bool has_displ = false;
     bool wait_assign = false;
+    int while_relocation = 0;
     int code_align = 0;
     int temporary_code_size = 0;
     char cycle_while_str[100];
@@ -2037,25 +2038,30 @@ bool code_work() {
                 has_oper = true;
                 if(strcmp(tokens, "1,18") == 0)
                     cycle_for = true;
-                if(strcmp(tokens, "1,21") == 0)
+                if(strcmp(tokens, "1,21") == 0){
+                    while_relocation = getFileSize(TEMP_OBJ_FILE_NAME);
                     cycle_while = true;
+                }
             }
 
             //                      end                             next
             if(!cycle_for) {
                 if (strcmp(tokens, "1,30") == 0 || strcmp(tokens, "1,22") == 0) {
+                    char hex[10];
+
                     if(cycle_while){
-                        sprintf(template, "%s"
-                                          "\tjg %s\n"
-                                          "\tjmp %s\n", cycle_while_str, tmp_block_next_name, tmp_block_name);
-                        strcat(result, template);
-                        memset(template, '\0', sizeof(template));
-                        memset(tmp_block_name, '\0', sizeof(tmp_block_name));
+                        code_align+=5;
+                        int local_relocation =  (while_relocation - getFileSize(TEMP_OBJ_FILE_NAME)) - 5;
+                        relocation_count = machine_templates("jmp", 0x00, index_vars, relocation_count);
+                        memset(hex, '\0', 10);
+                        sprintf(hex,"%d", local_relocation);
+
+                        write_bytes_to_file_position(TEMP_OBJ_FILE_NAME, getFileSize(TEMP_OBJ_FILE_NAME), hex, 4);
+
                         cycle_while = false;
                     }
 
                     code_align = (getFileSize(TEMP_OBJ_FILE_NAME) - temporary_code_size) - 4;
-                    char hex[10];
                     memset(hex, '\0', 10);
                     sprintf(hex,"%d", code_align);
 
@@ -2066,7 +2072,6 @@ bool code_work() {
             if(has_oper){
                 get_buffer_from_token(tokens, buffer[0], buffer[1]);
                 if((strcmp(tokens, "1,15")==0 || strcmp(tokens, "1,20")==0) && !cycle_for){ // THEN OR DO
-
                     relocation_count = machine_templates("cmp_rbx_rax", 0x00, index_vars, relocation_count);
                     if(cmp_flag!=0) {
                         switch (cmp_flag) {
@@ -2098,42 +2103,9 @@ bool code_work() {
                     hex_local = 0x00000000;
                     appendToFile(TEMP_OBJ_FILE_NAME, &hex_local, 4);
 
-                    sprintf(template, "%s:\n", tmp_block_name);
-                    strcat(result, template);
-                    memset(template, '\0', sizeof(template));
-                    if(!cycle_while)
-                        memset(tmp_block_name, '\0', sizeof(tmp_block_name));
                     has_oper = false;
                 }
                 if(!cycle_for) {
-                    if(cycle_while){
-                        if (strcmp(buffer[0], "3") == 0) {
-                            if(!has_next_while) {
-                                sprintf(template, "\tcmp %s(%rip)", words[atoi(buffer[0])][atoi(buffer[1])]);
-                                strcat(cycle_while_str, template);
-                                memset(template, '\0', sizeof(template));
-                                has_next_while = true;
-                            }else{
-                                sprintf(template, ", %s(%rip)\n", words[atoi(buffer[0])][atoi(buffer[1])]);
-                                strcat(cycle_while_str, template);
-                                memset(template, '\0', sizeof(template));
-                                has_next_while = false;
-                            }
-                        }else if (strcmp(buffer[0], "2") == 0) {
-                            if(!has_next_while) {
-                                sprintf(template, "\tmov $%s, %rbp\n"
-                                                  "\tcmp %rbp", words[atoi(buffer[0])][atoi(buffer[1])]);
-                                strcat(cycle_while_str, template);
-                                memset(template, '\0', sizeof(template));
-                                has_next_while = true;
-                            }else{
-                                sprintf(template, ", $%s\n", words[atoi(buffer[0])][atoi(buffer[1])]);
-                                strcat(cycle_while_str, template);
-                                memset(template, '\0', sizeof(template));
-                                has_next_while = false;
-                            }
-                        }
-                    }else{
                         if (strcmp(buffer[0], "3") == 0 || strcmp(buffer[0], "2") == 0) {
                             if(!has_next) {
                                 relocation_count = machine_templates("mov_addr_rax", words[atoi(buffer[0])][atoi(buffer[1])], index_vars, relocation_count);
@@ -2145,22 +2117,7 @@ bool code_work() {
                         }else if(strcmp(buffer[0], "1") == 0){
                             cmp_flag = atoi(buffer[1]);
                         }
-//                        else if (strcmp(buffer[0], "2") == 0) {
-//                            if(!has_next) {
-//                                sprintf(template, "\tmov $0, %crax\n"
-//                                                  "\tadd $%s, %rax\n", '%', words[atoi(buffer[0])][atoi(buffer[1])]);
-//                                strcat(result, template);
-//                                memset(template, '\0', sizeof(template));
-//                                has_next = true;
-//                            }else{
-//                                sprintf(template, "\tmov $0, %crbx\n"
-//                                                  "\tadd $%s, %rbx\n", '%', words[atoi(buffer[0])][atoi(buffer[1])]);
-//                                strcat(result, template);
-//                                memset(template, '\0', sizeof(template));
-//                                has_next = false;
-//                            }
-//                        }
-                    }
+//                    }
                 }else{
                     if (strcmp(tokens, "1,19") == 0) { // DETECT VAL
 
@@ -2173,10 +2130,7 @@ bool code_work() {
                             relocation_count = machine_templates("mov_addr_rbp", words[atoi(buffer[0])][atoi(buffer[1])], index_vars, relocation_count);
                         }
 
-                        sprintf(template, "\tcmp %crbp, %s(%crip)\n"
-                                          "\tjg %s\n"
-                                          "\tadd $1, %s(%crip)\n", '%', variable, '%', tmp_block_next_name, variable,
-                                '%');
+
                         strcpy(variable_for, variable);
 
                         relocation_count = machine_templates("mov_addr_rax", variable, index_vars, relocation_count);
@@ -2185,16 +2139,11 @@ bool code_work() {
 
                         relocation_count = machine_templates("mov_rax_addr", variable, index_vars, relocation_count);
 
-                        strcat(result, template);
-                        memset(template, '\0', sizeof(template));
-
                     }
                     if (strcmp(tokens, "1,22") == 0) { // DETECT NEXT
-                        sprintf(template, "\tjmp %s\n"
-                                          "%s:\n", tmp_block_name, tmp_block_next_name);
 
                         relocation_count = machine_templates("cmp_addr_rbp", variable_for, index_vars, relocation_count);
-                        relocation_count = machine_templates("je", 0x00, index_vars, relocation_count);
+                        relocation_count = machine_templates("jle", 0x00, index_vars, relocation_count);
                         hex_local = 0x05;
                         appendToFile(TEMP_OBJ_FILE_NAME, &hex_local, 1);
 
@@ -2211,10 +2160,6 @@ bool code_work() {
                     }
                 }
             }
-//            sprintf(template, "\tmovq a(%rip), %rax\n"
-//                              "\tmovq\t%rax, -8(%rbp)\n"
-//                              "\tmovq\t-8(%rbp), %rax", );
-//        }
         //               display func
         if(strcmp(tokens, "1,34")==0){
             has_displ = true;
@@ -2227,10 +2172,7 @@ bool code_work() {
             get_buffer_from_token(tokens, buffer[0], buffer[1]);
             if(strcmp(buffer[0], "3") == 0){
                 valid = true;
-                sprintf(template, "\tmov %s(%rip), %rdx\n", words[atoi(buffer[0])][atoi(buffer[1])]);
                 relocation_count = machine_templates("mov_addr_rdx", words[atoi(buffer[0])][atoi(buffer[1])], index_vars, relocation_count);
-                strcat(result, template);
-                memset(template, '\0', sizeof(template));
                 for(int i = 0; i < vars_count; i++){
                     if(strcmp(def_vars[i].name, words[atoi(buffer[0])][atoi(buffer[1])]) ==0){
                         if(strcmp(def_vars[i].type, "float") == 0) {
@@ -2244,18 +2186,9 @@ bool code_work() {
 
             }else if(strcmp(buffer[0], "2") == 0){
                 valid = true;
-                sprintf(template, "\tmov $%s, %rdx\n", words[atoi(buffer[0])][atoi(buffer[1])]);
                 relocation_count = machine_templates("mov_addr_rdx", words[atoi(buffer[0])][atoi(buffer[1])], index_vars, relocation_count);
-                strcat(result, template);
-                memset(template, '\0', sizeof(template));
             }
             if(valid) {
-                sprintf(template, "\tmov $0, %crcx\n"
-                                  "\tlea %s(%rip), %rax\n"
-                                  "\tmov %rax, %rcx\n"
-                                  "\tcall printf\n", '%', format);
-                strcat(result, template);
-                memset(template, '\0', sizeof(template));
                 relocation_count = machine_templates("mov_addr_rcx", 0x00, 0, relocation_count);
                 relocation_count = machine_templates("lea_addr", 0x00, index_vars, relocation_count);
                 relocation_count = machine_templates("mov_rax_rcx", 0x00, 0, relocation_count);

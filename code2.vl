@@ -17,11 +17,16 @@ aq, uu, kkkkk, qeq, dasda:int;
 fl:float;
 # Начало работы программы #
 begin
-;uu assign 22
-;uu assign 22 | 12
-;aq assign 123
-;aq assign 1 | 1
-;for i assign 0 val 10 do
+;aq assign 10
+;while aq GRE 1 do
+        ;aq assign aq ! 1
+    ;displ aq
+    ;if aq GRE 1 then
+        ;displ aq
+    ;end
+    ;for i assign 1 val 10 do
     ;displ i
+    ;next
 ;next
+;displ aq
 end..
