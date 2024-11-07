@@ -18,12 +18,10 @@ fl:float;
 # Начало работы программы #
 begin
 ;uu assign 22
-;aq assign uu
-;aq assign 221
-;if uu EQV 1 then
-    ;aq assign 22
-    ;displ aq
-;end
-;displ aq
-;aq assign 221
+;uu assign 22 | 12
+;aq assign 123
+;aq assign 1 | 1
+;for i assign 0 val 10 do
+    ;displ i
+;next
 end..
