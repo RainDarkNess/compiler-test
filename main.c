@@ -35,9 +35,9 @@ char words[4][1024][1024] = {{ // types
                              { // delimiters
                                      {"assign"}, // 0
                                      {";"}, // 1
-                                     {"GRT"}, // 2
+                                     {"GRT"}, // 2 >
                                      {' '}, // 3
-                                     {"LOWT"}, // 4
+                                     {"LOWT"}, // 4 <
                                      {"begin"}, // 5
                                      {"if"}, // 6
                                      {'('}, // 7
@@ -59,10 +59,10 @@ char words[4][1024][1024] = {{ // types
                                      {":"}, // 23
                                      {"program"}, // 24
                                      {"var"}, // 25
-                                     {"NEQ"}, // 26
-                                     {"EQV"}, // 27
-                                     {"LOWE"}, // 28
-                                     {"GRE"}, // 29
+                                     {"NEQ"}, // 26 !=
+                                     {"EQV"}, // 27 =
+                                     {"LOWE"}, // 28 <=
+                                     {"GRE"}, // 29 >=
                                      {"end"}, // 30
                                      {","}, // 31
                                      {"["}, // 32
@@ -866,6 +866,34 @@ void add_relocations_section(RelocationEntry relocationEntry){
     appendToFile_little_en(TEMP_OBJ_FILE_RELOCATIONS, &relocationEntry.r_symbol, 4);
     appendToFile_little_en(TEMP_OBJ_FILE_RELOCATIONS, &relocationEntry.r_type, 2);
 }
+
+void write_bytes_to_file_position(const char *filename, long position, char *data, size_t length) {
+    FILE *file = fopen(filename, "r+b");
+    if (file == NULL) {
+        perror("err write_bytes_to_file_position");
+        return;
+    }
+
+    long long decimalNumber = atoll(data);
+    unsigned char hex_bytes[length];
+    for (int i = 0; i < length; i++) {
+        hex_bytes[i] = (decimalNumber >> (i * 8)) & 0xFF;
+    }
+
+    if (fseek(file, position, SEEK_SET) != 0) {
+        perror("err write_bytes_to_file_position");
+        fclose(file);
+        return;
+    }
+
+    size_t written = fwrite(hex_bytes, sizeof(uint8_t), length, file);
+    if (written != length) {
+        perror("err write_bytes_to_file_position");
+    }
+
+    fclose(file);
+}
+
 int machine_templates(char *op, char *value, int index_vars, int relocation_count){
 
     RelocationEntry relocationEntry;
@@ -1356,15 +1384,40 @@ int machine_templates(char *op, char *value, int index_vars, int relocation_coun
         appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
         hex = 0xF1;
         appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
-    }else if(strcmp(op, "jmp_addr") == 0){
-        hex = 0xEB;
+    }else if(strcmp(op, "je") == 0){
+        hex = 0x74;
         appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
-
-        correct_hex_presentation(value, TEMP_OBJ_FILE_NAME);
+    }else if(strcmp(op, "jne") == 0){
+        hex = 0x75;
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+    }else if(strcmp(op, "jge") == 0){
+        hex = 0x7d;
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+    }else if(strcmp(op, "jle") == 0){
+        hex = 0x7e;
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+    }else if(strcmp(op, "jl") == 0){
+        hex = 0x7c;
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+    }else if(strcmp(op, "jg") == 0){
+        hex = 0x7f;
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+    }else if(strcmp(op, "jmp") == 0){
+        hex = 0xE9;
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
     }else if(strcmp(op, "cmp_rax_rbx") == 0){
         hex = 0x48;
         appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
         hex = 0x39;
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+        hex = 0xC3;
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+    }else if(strcmp(op, "cmp_rbx_rax") == 0){
+        hex = 0x48;
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+        hex = 0x39;
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+        hex = 0xD8;
         appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
     }else if(strcmp(op, "cmp_addr_rcx") == 0){
 
@@ -1524,6 +1577,8 @@ bool code_work() {
     memset(template, '\0', sizeof(template));
     char hexval[1024];
 
+    int cmp_flag = 0;
+
     memset(hexval, '\0', 1024);
 
 //    copyFile("C:\\Users\\rain\\CLionProjects\\CTest\\template.bin", OBJ_FILE_NAME);
@@ -1653,6 +1708,8 @@ bool code_work() {
     bool cycle_for = false;
     bool cycle_while = false;
     bool has_displ = false;
+    int code_align = 0;
+    int temporary_code_size = 0;
     char cycle_while_str[100];
     memset(cycle_while_str, '\0', sizeof(cycle_while_str));
 
@@ -1830,21 +1887,9 @@ bool code_work() {
                                 v_index = 0;
                             }
                         }
-//                        sprintf(template, "\tmov %crbx, %s(%rip)\n"
-//                                              "\tmov $0, %rbx\n", '%', variable);
 
                         relocation_count = machine_templates("mov_rbx_addr", variable, index_vars, relocation_count);
                         relocation_count = machine_templates("mov_addr_rbx", "0", 0, relocation_count);
-//                            strcat(result, template);
-//                            memset(template, '\0', sizeof(template));
-
-//                        }else{
-//                            sprintf(template, "\tmov %rbx, %rax\n"
-//                                              "\tmov $0, %rbx\n");
-//                            strcat(result, template);
-//                            memset(template, '\0', sizeof(template));
-//                        }
-//                    memset(variable, '\0', sizeof(variable));
 
                         memset(stack, '\0', sizeof(stack));
                         memset(infix, '\0', sizeof(infix));
@@ -1883,7 +1928,6 @@ bool code_work() {
                 if(strcmp(tokens, "1,0")!=0) {
                     get_buffer_from_token(tokens, buffer[0], buffer[1]);
                     strcpy(variable, words[atoi(buffer[0])][atoi(buffer[1])]);
-                    int a =1;
                 }
             }
 
@@ -1914,21 +1958,48 @@ bool code_work() {
                         memset(tmp_block_name, '\0', sizeof(tmp_block_name));
                         cycle_while = false;
                     }
-                    sprintf(template, "%s:\n", tmp_block_next_name);
-                    strcat(result, template);
-                    memset(template, '\0', sizeof(template));
-                    memset(tmp_block_next_name, '\0', sizeof(tmp_block_next_name));
+
+                    code_align = (getFileSize(TEMP_OBJ_FILE_NAME) - temporary_code_size) - 4;
+                    char hex[10];
+                    memset(hex, '\0', 10);
+                    sprintf(hex,"%d", code_align);
+
+                    write_bytes_to_file_position(TEMP_OBJ_FILE_NAME, temporary_code_size, hex, 4);
+
                 }
             }
             if(has_oper){
                 get_buffer_from_token(tokens, buffer[0], buffer[1]);
                 if((strcmp(tokens, "1,15")==0 || strcmp(tokens, "1,20")==0) && !cycle_for){ // THEN OR DO
-                    sprintf(tmp_block_name, "b%d", block_count);
-                    sprintf(tmp_block_next_name, "n%d", block_count++);
-                    sprintf(template, "\tcmp %crax, %crbx\n"
-                                      "\tje %s\n",'%','%', tmp_block_name);
-                    strcat(result, template);
-                    memset(template, '\0', sizeof(template));
+
+                    relocation_count = machine_templates("cmp_rbx_rax", 0x00, index_vars, relocation_count);
+                    switch(cmp_flag) {
+                        case 27: // ==
+                            relocation_count = machine_templates("je", 0x00, index_vars, relocation_count);
+                            break;
+                        case 26: // !=
+                            relocation_count = machine_templates("jne", 0x00, index_vars, relocation_count);
+                            break;
+                        case 29: // >=
+                            relocation_count = machine_templates("jge", 0x00, index_vars, relocation_count);
+                            break;
+                        case 28: // =<
+                            relocation_count = machine_templates("jle", 0x00, index_vars, relocation_count);
+                            break;
+                        case 4:  // <
+                            relocation_count = machine_templates("jl", 0x00, index_vars, relocation_count);
+                            break;
+                        case 2:  // >
+                            relocation_count = machine_templates("jg", 0x00, index_vars, relocation_count);
+                            break;
+                    }
+
+                    hex_local = 0x05;
+                    appendToFile(TEMP_OBJ_FILE_NAME, &hex_local, 1);
+                    relocation_count = machine_templates("jmp", 0x00, index_vars, relocation_count);
+                    temporary_code_size = getFileSize(TEMP_OBJ_FILE_NAME);
+                    hex_local = 0x00000000;
+                    appendToFile(TEMP_OBJ_FILE_NAME, &hex_local, 4);
 
                     sprintf(template, "%s:\n", tmp_block_name);
                     strcat(result, template);
@@ -1966,35 +2037,32 @@ bool code_work() {
                             }
                         }
                     }else{
-                        if (strcmp(buffer[0], "3") == 0) {
+                        if (strcmp(buffer[0], "3") == 0 || strcmp(buffer[0], "2") == 0) {
                             if(!has_next) {
-                                sprintf(template, "\tmov $0, %crax\n"
-                                                  "\tadd %s(%rip), %rax\n", '%', words[atoi(buffer[0])][atoi(buffer[1])]);
-                                strcat(result, template);
-                                memset(template, '\0', sizeof(template));
+                                relocation_count = machine_templates("mov_addr_rax", words[atoi(buffer[0])][atoi(buffer[1])], index_vars, relocation_count);
                                 has_next = true;
                             }else{
-                                sprintf(template, "\tmov $0, %crbx\n"
-                                                  "\tadd %s(%rip), %rbx\n", '%', words[atoi(buffer[0])][atoi(buffer[1])]);
-                                strcat(result, template);
-                                memset(template, '\0', sizeof(template));
+                                relocation_count = machine_templates("mov_addr_rbx", words[atoi(buffer[0])][atoi(buffer[1])], index_vars, relocation_count);
                                 has_next = false;
                             }
-                        }else if (strcmp(buffer[0], "2") == 0) {
-                            if(!has_next) {
-                                sprintf(template, "\tmov $0, %crax\n"
-                                                  "\tadd $%s, %rax\n", '%', words[atoi(buffer[0])][atoi(buffer[1])]);
-                                strcat(result, template);
-                                memset(template, '\0', sizeof(template));
-                                has_next = true;
-                            }else{
-                                sprintf(template, "\tmov $0, %crbx\n"
-                                                  "\tadd $%s, %rbx\n", '%', words[atoi(buffer[0])][atoi(buffer[1])]);
-                                strcat(result, template);
-                                memset(template, '\0', sizeof(template));
-                                has_next = false;
-                            }
+                        }else if(strcmp(buffer[0], "1") == 0){
+                            cmp_flag = atoi(buffer[1]);
                         }
+//                        else if (strcmp(buffer[0], "2") == 0) {
+//                            if(!has_next) {
+//                                sprintf(template, "\tmov $0, %crax\n"
+//                                                  "\tadd $%s, %rax\n", '%', words[atoi(buffer[0])][atoi(buffer[1])]);
+//                                strcat(result, template);
+//                                memset(template, '\0', sizeof(template));
+//                                has_next = true;
+//                            }else{
+//                                sprintf(template, "\tmov $0, %crbx\n"
+//                                                  "\tadd $%s, %rbx\n", '%', words[atoi(buffer[0])][atoi(buffer[1])]);
+//                                strcat(result, template);
+//                                memset(template, '\0', sizeof(template));
+//                                has_next = false;
+//                            }
+//                        }
                     }
                 }else{
                     if (strcmp(tokens, "1,19") == 0) { // DETECT VAL
@@ -2153,7 +2221,7 @@ bool code_work() {
     }
 
 
-    char* format_data = "%lld\0\0\0\0";
+    char* format_data = "%lld\n\0\0\0";
     appendToFile_little_en(TEMP_OBJ_FILE_NAME_DATA, format_data, 8);
     competition(TEMP_OBJ_FILE_NAME_DATA, 0x00);
 

@@ -18,17 +18,12 @@ fl:float;
 # Начало работы программы #
 begin
 ;uu assign 22
-;aq assign 1
-#;displ aq#
-;aq assign 6 * 6
+;aq assign uu
+;aq assign 221
+;if uu EQV 1 then
+    ;aq assign 22
+    ;displ aq
+;end
 ;displ aq
-;uu assign 6 ! 2
-#;displ uu#
-;qeq assign 1
-;qeq assign 1 | 2
-#;displ qeq#
-;fl assign 1.1
-;fl assign 20 ! 10
-#;displ fl#
-;aq assign 12
+;aq assign 221
 end..
