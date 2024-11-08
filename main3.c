@@ -1,6 +1,6 @@
 #include "stdio.h"
 int main(){
-    int y = 100;
-    printf("%d\n", y);
+    float y = 10.11;
+    printf("%f\n", y);
     return 0;
 }

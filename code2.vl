@@ -1,32 +1,12 @@
-# Многострочный комментарий
-
-              , _ ,
-             ( o o )
-            /'` ' `'\
-            |'''''''|
-            |\\'''//|
-               """
-
-Конец многострочного комментария #
-
-# Начало программы #
 program var
 
-# Объявление переменных #
-aq, uu, kkkkk, qeq, dasda:int;
 fl:float;
-# Начало работы программы #
+test:int;
+
 begin
-;aq assign 10
-;while aq GRE 1 do
-        ;aq assign aq ! 1
-    ;displ aq
-    ;if aq GRE 1 then
-        ;displ aq
-    ;end
-    ;for i assign 1 val 10 do
-    ;displ i
-    ;next
-;next
-;displ aq
+;fl assign 1.1
+;displ fl
+;test assign 2
+;displ test
+
 end..
