@@ -912,7 +912,7 @@ int machine_templates(char *op, char *value, int index_vars, int relocation_coun
                 correct_hex_presentation(adr, TEMP_OBJ_FILE_NAME);
 
                 relocationEntry.r_offset = code_count;
-                relocationEntry.r_symbol = index_vars + 6;
+                relocationEntry.r_symbol = index_vars + 4;
                 relocationEntry.r_type = 0x0004;
                 add_relocations_section(relocationEntry);
                 relocation_count++;
@@ -938,7 +938,7 @@ int machine_templates(char *op, char *value, int index_vars, int relocation_coun
 
 
                 relocationEntry.r_offset = code_count;
-                relocationEntry.r_symbol = index_vars + 6;
+                relocationEntry.r_symbol = index_vars + 4;
                 relocationEntry.r_type = 0x0004;
                 add_relocations_section(relocationEntry);
                 relocation_count++;
@@ -963,7 +963,7 @@ int machine_templates(char *op, char *value, int index_vars, int relocation_coun
                 correct_hex_presentation(adr, TEMP_OBJ_FILE_NAME);
 
                 relocationEntry.r_offset = code_count;
-                relocationEntry.r_symbol = index_vars + 6;
+                relocationEntry.r_symbol = index_vars + 4;
                 relocationEntry.r_type = 0x0004;
                 add_relocations_section(relocationEntry);
                 relocation_count++;
@@ -993,7 +993,7 @@ int machine_templates(char *op, char *value, int index_vars, int relocation_coun
 
 //                relocationEntry.r_offset = hex_values_l[i].addr + (code_count_sub - code_count - 2) + code_count;
                 relocationEntry.r_offset = code_count;
-                relocationEntry.r_symbol = index_vars + 6;
+                relocationEntry.r_symbol = index_vars + 4;
                 relocationEntry.r_type = 0x0004;
                 relocation_count++;
                 add_relocations_section(relocationEntry);
@@ -1032,7 +1032,7 @@ int machine_templates(char *op, char *value, int index_vars, int relocation_coun
                 found = true;
 
                 relocationEntry.r_offset = code_count;
-                relocationEntry.r_symbol = index_vars + 6;
+                relocationEntry.r_symbol = index_vars + 4;
                 relocationEntry.r_type = 0x0004;
                 add_relocations_section(relocationEntry);
                 relocation_count++;
@@ -1072,7 +1072,7 @@ int machine_templates(char *op, char *value, int index_vars, int relocation_coun
                 found = true;
 
                 relocationEntry.r_offset = code_count;
-                relocationEntry.r_symbol = index_vars + 6;
+                relocationEntry.r_symbol = index_vars + 4;
                 relocationEntry.r_type = 0x0004;
                 add_relocations_section(relocationEntry);
                 relocation_count++;
@@ -1113,7 +1113,7 @@ int machine_templates(char *op, char *value, int index_vars, int relocation_coun
                 found = true;
 
                 relocationEntry.r_offset = code_count;
-                relocationEntry.r_symbol = index_vars + 6;
+                relocationEntry.r_symbol = index_vars + 4;
                 relocationEntry.r_type = 0x0004;
                 add_relocations_section(relocationEntry);
                 relocation_count++;
@@ -1154,7 +1154,7 @@ int machine_templates(char *op, char *value, int index_vars, int relocation_coun
                 found = true;
 
                 relocationEntry.r_offset = code_count;
-                relocationEntry.r_symbol = index_vars + 6;
+                relocationEntry.r_symbol = index_vars + 4;
                 relocationEntry.r_type = 0x0004;
                 add_relocations_section(relocationEntry);
                 relocation_count++;
@@ -1195,7 +1195,7 @@ int machine_templates(char *op, char *value, int index_vars, int relocation_coun
                 found = true;
 
                 relocationEntry.r_offset = code_count;
-                relocationEntry.r_symbol = index_vars + 6;
+                relocationEntry.r_symbol = index_vars + 4;
                 relocationEntry.r_type = 0x0004;
                 add_relocations_section(relocationEntry);
                 relocation_count++;
@@ -1235,7 +1235,7 @@ int machine_templates(char *op, char *value, int index_vars, int relocation_coun
                 found = true;
 
                 relocationEntry.r_offset = code_count;
-                relocationEntry.r_symbol = index_vars + 6;
+                relocationEntry.r_symbol = index_vars + 4;
                 relocationEntry.r_type = 0x0004;
                 add_relocations_section(relocationEntry);
                 relocation_count++;
@@ -1275,7 +1275,7 @@ int machine_templates(char *op, char *value, int index_vars, int relocation_coun
                 found = true;
 
                 relocationEntry.r_offset = code_count;
-                relocationEntry.r_symbol = index_vars + 6;
+                relocationEntry.r_symbol = index_vars + 4;
                 relocationEntry.r_type = 0x0004;
                 add_relocations_section(relocationEntry);
                 relocation_count++;
@@ -1312,7 +1312,7 @@ int machine_templates(char *op, char *value, int index_vars, int relocation_coun
                 correct_hex_presentation(adr, TEMP_OBJ_FILE_NAME);
 
                 relocationEntry.r_offset = code_count;
-                relocationEntry.r_symbol = index_vars + 6;
+                relocationEntry.r_symbol = index_vars + 4;
                 relocationEntry.r_type = 0x0004;
                 add_relocations_section(relocationEntry);
                 relocation_count++;
@@ -1342,7 +1342,7 @@ int machine_templates(char *op, char *value, int index_vars, int relocation_coun
                 correct_hex_presentation(adr, TEMP_OBJ_FILE_NAME);
 
                 relocationEntry.r_offset = code_count;
-                relocationEntry.r_symbol = index_vars + 6;
+                relocationEntry.r_symbol = index_vars + 4;
                 relocationEntry.r_type = 0x0004;
                 add_relocations_section(relocationEntry);
                 relocation_count++;
@@ -1365,7 +1365,7 @@ int machine_templates(char *op, char *value, int index_vars, int relocation_coun
         correct_hex_presentation(adr, TEMP_OBJ_FILE_NAME);
 
         relocationEntry.r_offset = code_count;
-        relocationEntry.r_symbol = index_vars + 6;
+        relocationEntry.r_symbol = index_vars + 4;
         relocationEntry.r_type = 0x0004;
         add_relocations_section(relocationEntry);
         relocation_count++;
@@ -1531,7 +1531,7 @@ int machine_templates(char *op, char *value, int index_vars, int relocation_coun
                 found = true;
 
                 relocationEntry.r_offset = code_count;
-                relocationEntry.r_symbol = index_vars + 6;
+                relocationEntry.r_symbol = index_vars + 4;
                 relocationEntry.r_type = 0x0004;
                 add_relocations_section(relocationEntry);
                 relocation_count++;
@@ -1570,7 +1570,7 @@ int machine_templates(char *op, char *value, int index_vars, int relocation_coun
                 correct_hex_presentation(adr, TEMP_OBJ_FILE_NAME);
 
                 relocationEntry.r_offset = code_count;
-                relocationEntry.r_symbol = index_vars + 6;
+                relocationEntry.r_symbol = index_vars + 4;
                 relocationEntry.r_type = 0x0004;
                 add_relocations_section(relocationEntry);
                 relocation_count++;
@@ -1606,7 +1606,7 @@ int machine_templates(char *op, char *value, int index_vars, int relocation_coun
         hex = 0x00;
         appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
         relocationEntry.r_offset = code_count;
-        relocationEntry.r_symbol = index_vars + 11;
+        relocationEntry.r_symbol = index_vars + 9;
         relocationEntry.r_type = 0x0004;
         add_relocations_section(relocationEntry);
         relocation_count++;
@@ -2277,26 +2277,26 @@ bool code_work() {
     appendToFile_little_en(TEMP_OBJ_FILE_NAME_DATA, format_data, 8);
     competition(TEMP_OBJ_FILE_NAME_DATA, 0x00);
 
-    SymbolEntry symbolEntry_ep = {
-            .s_name = "ep",
-            .s_value = code_count_text,
-            .s_section = 0x0001,
-            .s_type = 0x0000,
-            .s_storage_class = 0x06,
-            .s_num_aux = 0x00
-    };
-    add_symbol_table(symbolEntry_ep);
+//    SymbolEntry symbolEntry_ep = {
+//            .s_name = "ep",
+//            .s_value = code_count_text,
+//            .s_section = 0x0001,
+//            .s_type = 0x0000,
+//            .s_storage_class = 0x06,
+//            .s_num_aux = 0x00
+//    };
+//    add_symbol_table(symbolEntry_ep);
+//
+//    SymbolEntry symbolEntry_dz = {
+//            .s_name = "dz",
+//            .s_value = code_count_text+13,
+//            .s_section = 0x0001,
+//            .s_type = 0x0000,
+//            .s_storage_class = 0x06,
+//            .s_num_aux = 0x00
+//    };
 
-    SymbolEntry symbolEntry_dz = {
-            .s_name = "dz",
-            .s_value = code_count_text+13,
-            .s_section = 0x0001,
-            .s_type = 0x0000,
-            .s_storage_class = 0x06,
-            .s_num_aux = 0x00
-    };
-
-    add_symbol_table(symbolEntry_dz);
+//    add_symbol_table(symbolEntry_dz);
 
     SymbolEntry symbolEntry_text = {
             .s_name = ".text",
@@ -2414,7 +2414,7 @@ bool code_work() {
     fileHeader.NumberOfSections = 0x0003;
     fileHeader.TimeDateStamp = 0x00000000;
     fileHeader.PointerToSymbolTable =  raw_data + code_count_data + code_count_relocations - 4 + (48*3);
-    fileHeader.NumberOfSymbols =  index_vars + 12;
+    fileHeader.NumberOfSymbols =  index_vars + 10;
     fileHeader.SizeOfOptionalHeader = 0x0000;
     fileHeader.Characteristics = 0x0005;
 

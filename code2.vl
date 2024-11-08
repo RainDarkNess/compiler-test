@@ -5,8 +5,14 @@ test:int;
 
 begin
 ;fl assign 1.1
-;displ fl
 ;test assign 2
+
+;for i assign 1 val 10 do
+    ;displ i
+    ;test assign test | 2
+;next
+
+;displ fl
 ;displ test
 
 end..
