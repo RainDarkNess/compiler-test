@@ -68,6 +68,7 @@ char words[4][1024][1024] = {{ // types
                                      {"["}, // 32
                                      {"]"}, // 33
                                      {"displ"}, // 34
+                                     {"^"}, // 35
                              },
                              { // vars values
                                      {112},
@@ -832,7 +833,14 @@ struct hex_values hex_values_l[1024];
 
 
 void correct_hex_presentation(char *digit, char *filename) {
-    long long decimalNumber = atoll(digit);
+    long long decimalNumber = 0;
+    if(strcmp(digit, "false")==0){
+        decimalNumber = -2;
+    }else if(strcmp(digit, "true")==0){
+        decimalNumber = 1;
+    }else{
+        decimalNumber = atoll(digit);
+    }
 
     FILE *file = fopen(filename, "ab");
     if (file == NULL) {
@@ -1168,9 +1176,9 @@ int machine_templates(char *op, char *value, int index_vars, int relocation_coun
             appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
             hex = 0xC7;
             appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
-            hex = 0xC3;
+            hex = 0xC2;
             appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
-            add_relocations_section(relocationEntry);
+//            add_relocations_section(relocationEntry);
 
             correct_hex_presentation(value, TEMP_OBJ_FILE_NAME);
         }
@@ -1370,6 +1378,81 @@ int machine_templates(char *op, char *value, int index_vars, int relocation_coun
         add_relocations_section(relocationEntry);
         relocation_count++;
 
+    }else if(strcmp(op, "lea_addr_bool") == 0){
+        char adr[100];
+
+        relocation_count = machine_templates("mov_addr_rax", "1", index_vars, relocation_count);
+//        relocation_count = machine_templates("mov_addr_rdx", "1", index_vars, relocation_count);
+
+//        hex = 0x48;
+//        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+//        hex = 0x83;
+//        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+//        hex = 0xFA;
+//        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+//        hex = 0x01;
+//        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+
+        relocation_count = machine_templates("cmp_rax_rdx", 0x00, index_vars, relocation_count);
+
+//        relocation_count = machine_templates("cmp_addr_rdx", value, index_vars, relocation_count);
+
+        relocation_count = machine_templates("je", 0x00, index_vars, relocation_count);
+
+        hex = 0x05;
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+
+        relocation_count = machine_templates("jmp", 0x00, index_vars, relocation_count);
+        memset(adr, '\0', 100);
+
+        sprintf(adr,"%d", 12);
+        write_bytes_to_file_position(TEMP_OBJ_FILE_NAME, getFileSize(TEMP_OBJ_FILE_NAME), adr, 4);
+
+        hex = 0x48;
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+        hex = 0x8d;
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+        hex = 0x05;
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+
+        memset(adr, '\0', 100);
+        int count_data_set = (index_vars * 8) + (8*2);
+
+        sprintf(adr, "%d", count_data_set);
+        long code_count = getFileSize(TEMP_OBJ_FILE_NAME);
+        correct_hex_presentation(adr, TEMP_OBJ_FILE_NAME);
+
+        relocationEntry.r_offset = code_count;
+        relocationEntry.r_symbol = index_vars + 4;
+        relocationEntry.r_type = 0x0004;
+        add_relocations_section(relocationEntry);
+        relocation_count++;
+
+        relocation_count = machine_templates("jmp", 0x00, index_vars, relocation_count);
+        memset(adr, '\0', 100);
+        sprintf(adr,"%d", 7);
+        write_bytes_to_file_position(TEMP_OBJ_FILE_NAME, getFileSize(TEMP_OBJ_FILE_NAME), adr, 4);
+
+        hex = 0x48;
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+        hex = 0x8d;
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+        hex = 0x05;
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+
+        memset(adr, '\0', 100);
+        count_data_set = (index_vars * 8) + (8*3);
+
+        sprintf(adr, "%d", count_data_set);
+        code_count = getFileSize(TEMP_OBJ_FILE_NAME);
+        correct_hex_presentation(adr, TEMP_OBJ_FILE_NAME);
+
+        relocationEntry.r_offset = code_count;
+        relocationEntry.r_symbol = index_vars + 4;
+        relocationEntry.r_type = 0x0004;
+        add_relocations_section(relocationEntry);
+        relocation_count++;
+
     }else if(strcmp(op, "add_rbx_rax") == 0){
         hex = 0x48;
         appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
@@ -1510,7 +1593,14 @@ int machine_templates(char *op, char *value, int index_vars, int relocation_coun
         appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
         hex = 0xD8;
         appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
-    }else if(strcmp(op, "cmp_addr_rcx") == 0){
+    }else if(strcmp(op, "cmp_rax_rdx") == 0){
+        hex = 0x48;
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+        hex = 0x39;
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+        hex = 0xC2;
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+    }else if(strcmp(op, "cmp_addr_rdx") == 0){
 
         bool found = false;
         for(int i = 0; i < index_vars; i++){
@@ -1520,7 +1610,7 @@ int machine_templates(char *op, char *value, int index_vars, int relocation_coun
                 appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
                 hex = 0x3B;
                 appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
-                hex = 0x0D;
+                hex = 0x15;
                 appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
 
                 char adr[100];
@@ -1547,7 +1637,48 @@ int machine_templates(char *op, char *value, int index_vars, int relocation_coun
             appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
             hex = 0xF9;
             appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
-            add_relocations_section(relocationEntry);
+
+            correct_hex_presentation(value, TEMP_OBJ_FILE_NAME);
+        }
+
+    }else if(strcmp(op, "cmp_addr_rcx") == 0){
+
+        bool found = false;
+        for(int i = 0; i < index_vars; i++){
+            if(strcmp(hex_values_l[i].name, value) == 0){
+
+                hex = 0x48;
+                appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+                hex = 0x3B;
+                appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+                hex = 0xEC;
+                appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+
+                char adr[100];
+                memset(adr, '\0', 100);
+                sprintf(adr, "%d", hex_values_l[i].addr);
+                long code_count = getFileSize(TEMP_OBJ_FILE_NAME);
+                correct_hex_presentation(adr, TEMP_OBJ_FILE_NAME);
+                found = true;
+
+                relocationEntry.r_offset = code_count;
+                relocationEntry.r_symbol = index_vars + 4;
+                relocationEntry.r_type = 0x0004;
+                add_relocations_section(relocationEntry);
+                relocation_count++;
+
+                break;
+            }
+        }
+        if(!found){
+
+            hex = 0x48;
+            appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+            hex = 0x83;
+            appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+            hex = 0xFA;
+            appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+//            add_relocations_section(relocationEntry);
 
             correct_hex_presentation(value, TEMP_OBJ_FILE_NAME);
         }
@@ -1585,6 +1716,20 @@ int machine_templates(char *op, char *value, int index_vars, int relocation_coun
         hex = 0x89;
         appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
         hex = 0xC1;
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+    }else if(strcmp(op, "not_rax") == 0){
+        hex = 0x48;
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+        hex = 0xF7;
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+        hex = 0xD0;
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+    }else if(strcmp(op, "not_rbx") == 0){
+        hex = 0x48;
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+        hex = 0xF7;
+        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
+        hex = 0xD3;
         appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
     }else if(strcmp(op, "xor_rdx_rdx") == 0){
         hex = 0x48;
@@ -1697,6 +1842,7 @@ bool code_work() {
     char hexval[1024];
 
     int cmp_flag = 0;
+    int not_flag = 0;
 
     memset(hexval, '\0', 1024);
 
@@ -1741,7 +1887,7 @@ bool code_work() {
 
                 strcpy(hex_values_l[index_vars].name, def_vars[i].name);
                 hex_values_l[index_vars].addr = max_hex_addr;
-                hex_values_l[index_vars].value = 0;
+                hex_values_l[index_vars].value = -2;
                 max_hex_addr+=8;
 //                printf("%x | %d | %s\n", hex_values_l[index_vars].addr, hex_values_l[index_vars].value, hex_values_l[index_vars].name);
                 index_vars++;
@@ -1768,7 +1914,7 @@ bool code_work() {
 
                     strcpy(hex_values_l[index_vars].name, def_vars[i].name);
                     hex_values_l[index_vars].addr = max_hex_addr;
-                    hex_values_l[index_vars].value = 0;
+                    hex_values_l[index_vars].value = -2;
                     max_hex_addr+=8;
 //                    printf("%x | %d | %s\n", hex_values_l[index_vars].addr, hex_values_l[index_vars].value, hex_values_l[index_vars].name);
                     index_vars++;
@@ -2084,6 +2230,9 @@ bool code_work() {
             if(has_oper){
                 get_buffer_from_token(tokens, buffer[0], buffer[1]);
                 if((strcmp(tokens, "1,15")==0 || strcmp(tokens, "1,20")==0) && !cycle_for){ // THEN OR DO
+                    if(not_flag == 1){
+                        relocation_count = machine_templates("not_rbx", 0x00, index_vars, relocation_count);
+                    }
                     relocation_count = machine_templates("cmp_rbx_rax", 0x00, index_vars, relocation_count);
                     if(cmp_flag!=0) {
                         switch (cmp_flag) {
@@ -2126,8 +2275,10 @@ bool code_work() {
                                 relocation_count = machine_templates("mov_addr_rbx", words[atoi(buffer[0])][atoi(buffer[1])], index_vars, relocation_count);
                                 has_next = false;
                             }
-                        }else if(strcmp(buffer[0], "1") == 0){
+                        }else if(strcmp(buffer[0], "1") == 0 && strcmp(buffer[1], "35") != 0){
                             cmp_flag = atoi(buffer[1]);
+                        }else if(strcmp(buffer[0], "1") == 0 && strcmp(buffer[1], "35") == 0){
+                            not_flag = 1;
                         }
 //                    }
                 }else{
@@ -2196,8 +2347,12 @@ bool code_work() {
                     if(strcmp(def_vars[variable_format].name, words[atoi(buffer[0])][atoi(buffer[1])])==0){
                         if(strcmp(def_vars[variable_format].type, "float")==0)
                             relocation_count = machine_templates("lea_addr_double", 0x00, index_vars, relocation_count);
-                        else
+                        else if(strcmp(def_vars[variable_format].type, "bool")==0){
+//                            relocation_count = machine_templates("lea_addr_bool", "1", index_vars, relocation_count);
+                            relocation_count = machine_templates("lea_addr_bool", words[atoi(buffer[0])][atoi(buffer[1])], index_vars, relocation_count);
+                        }else if(strcmp(def_vars[variable_format].type, "int")==0){
                             relocation_count = machine_templates("lea_addr_int", 0x00, index_vars, relocation_count);
+                        }
                         break;
                     }
                 }
@@ -2271,9 +2426,13 @@ bool code_work() {
     }
 
 
-    char* format_data = "%f\n\0\0\0";
+    char* format_data = "%f\n\0\0\0\0\0";
     appendToFile_little_en(TEMP_OBJ_FILE_NAME_DATA, format_data, 8);
-    format_data = "%d\n\0\0\0";
+    format_data = "%d\n\0\0\0\0\0";
+    appendToFile_little_en(TEMP_OBJ_FILE_NAME_DATA, format_data, 8);
+    format_data = "true\n\0\0\0";
+    appendToFile_little_en(TEMP_OBJ_FILE_NAME_DATA, format_data, 8);
+    format_data = "false\n\0\0";
     appendToFile_little_en(TEMP_OBJ_FILE_NAME_DATA, format_data, 8);
     competition(TEMP_OBJ_FILE_NAME_DATA, 0x00);
 
@@ -2962,20 +3121,15 @@ bool syntax_check(char _map[]) {
                         var_find_if = true;
                         printf("_FIND VALUE IS %s\n", words[atoi(table_number)][atoi(table_val)]);
                     }
+                    if(strcmp(table_number, "1") == 0 && strcmp(table_val, "35")==0){
+                        var_find_if = true;
+                        has_condition_if = true;
+                        printf("FIND '%s'\n", words[atoi(table_number)][atoi(table_val)]);
+                        continue;
+                    }
                     if (strcmp(table_number, "1") == 0) {
-                        if (strcmp(table_val, "2") == 0) { // condition in if
-                            printf("FIND '>'\n");
-                            has_condition_if = true;
-                            if (var_find_if) {
-                                var_find_if = false;
-                            } else {
-                                printf("Error. Undefined token, value not found %s\n",
-                                       words[atoi(table_number)][atoi(table_val)]);
-                                not_error = false;
-                                break;
-                            }
-                        } else if (strcmp(table_val, "4") == 0) {
-                            printf("FIND '<'\n");
+                        if (strcmp(table_val, "4") == 0 || strcmp(table_val, "2") == 0 ||strcmp(table_val, "26") == 0 || strcmp(table_val, "28") == 0 || strcmp(table_val, "29") == 0  || strcmp(table_val, "27") == 0) {
+                            printf("FIND '%s'\n", words[atoi(table_number)][atoi(table_val)]);
                             has_condition_if = true;
                             if (var_find_if) {
                                 var_find_if = false;
@@ -2996,7 +3150,7 @@ bool syntax_check(char _map[]) {
                                    words[atoi(table_number)][atoi(table_val)]);
                             not_error = false;
                             break;
-                        } else if (!has_condition_if && var_find_if) {
+                        } else if (!has_condition_if && var_find_if && then_find) {
                             printf("FIND 'Then' but condition not found! Checking var value from var '%s'\n",
                                    def_vars[var_if_number].name);
                             then_find = true;
@@ -3188,7 +3342,7 @@ bool code_check_file_write(const char chars[1024]) {
         if (we_have_problem)
             break;
 
-        for (int del = 0; del <= 34; del++) {
+        for (int del = 0; del <= 35; del++) {
 
             for (int sub_del = 0; *(words[1][del] + sub_del); sub_del++) {
 

@@ -2,17 +2,19 @@ program var
 
 fl:float;
 test:int;
-
+test_lb:bool;
 begin
+
 ;fl assign 1.1
 ;test assign 2
-
-;for i assign 1 val 10 do
-    ;displ i
-    ;test assign test | 2
-;next
+#
+;if test_lb EQV ^ false then
+;   displ test_lb
+;end
+#
+;test_lb assign false
 
 ;displ fl
-;displ test
+;displ test_lb
 
 end..
