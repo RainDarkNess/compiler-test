@@ -2312,7 +2312,7 @@ bool code_work() {
 
                         relocation_count = machine_templates("jmp", 0x00, index_vars, relocation_count);
 
-                        code_align = (temporary_code_size - getFileSize(TEMP_OBJ_FILE_NAME)) + 4;
+                        code_align = (temporary_code_size - getFileSize(TEMP_OBJ_FILE_NAME)) + 3;
                         char hex[10];
                         memset(hex, '\0', 10);
                         sprintf(hex,"%d", code_align);
@@ -2345,12 +2345,11 @@ bool code_work() {
                 relocation_count = machine_templates("mov_addr_rcx", "0", 0, relocation_count);
                 for(int variable_format = 0; variable_format < index_vars; variable_format++){
                     if(strcmp(def_vars[variable_format].name, words[atoi(buffer[0])][atoi(buffer[1])])==0){
-                        if(strcmp(def_vars[variable_format].type, "float")==0)
+                        if(strcmp(def_vars[variable_format].type, "float")==0){
                             relocation_count = machine_templates("lea_addr_double", 0x00, index_vars, relocation_count);
-                        else if(strcmp(def_vars[variable_format].type, "bool")==0){
-//                            relocation_count = machine_templates("lea_addr_bool", "1", index_vars, relocation_count);
+                        }else if(strcmp(def_vars[variable_format].type, "bool")==0){
                             relocation_count = machine_templates("lea_addr_bool", words[atoi(buffer[0])][atoi(buffer[1])], index_vars, relocation_count);
-                        }else if(strcmp(def_vars[variable_format].type, "int")==0){
+                        }else{
                             relocation_count = machine_templates("lea_addr_int", 0x00, index_vars, relocation_count);
                         }
                         break;
