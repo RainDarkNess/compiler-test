@@ -1,16 +1,20 @@
 program var
-
 fl:float;
 test:int;
 test_lb:bool;
 begin
 
 ;fl assign 1.1
+
 ;test assign 200
+
 ;test_lb assign false
 
 ;if test_lb EQV ^ true then
 ;   displ test_lb
+
+;else
+;   displ test
 ;end
 
 ;while test GRE 1 do
@@ -21,7 +25,6 @@ begin
 ;for i assign 1 val 10 do
     ;displ i
 ;next
-
 ;displ fl
 ;displ test_lb
 

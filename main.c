@@ -69,6 +69,8 @@ char words[4][1024][1024] = {{ // types
                                      {"]"}, // 33
                                      {"displ"}, // 34
                                      {"^"}, // 35
+                                     {"else"}, // 36
+                                     {'\n'}, // 37
                              },
                              { // vars values
                                      {112},
@@ -515,7 +517,7 @@ void removeSpacesAndNewlines(char *str) {
             comment_found = !comment_found;
         }
 
-        if (!isspace((unsigned char) str[i]) && !comment_found) {
+        if (str[i] != ' ' && !comment_found) {
             *result = str[i];
             result++;
         }
@@ -2704,6 +2706,7 @@ bool syntax_check(char _map[]) {
     bool has_condition_if = false;
     bool then_find = false;
     bool var_find_if = false;
+    bool else_find = false;
 
     // Var number for 'if'
     int var_if_number = 0;
@@ -2724,21 +2727,25 @@ bool syntax_check(char _map[]) {
     bool was_start = false;
     char tmp_var_type_name[1024];
 
-    int line = 1;
+    int line = -1;
 
     printf("______________________________\n");
     printf("PROGRAM SYNTAX ANALYSE STARTED\n");
     printf("______________________________\n");
 
-    for (int i = 0; *(tokens + i) != '\0'; i++) {
+    for (int i = 0; *(tokens + i) != (void *)0; i++) {
         if (not_error) {
             if(strlen(tokens[i]) ==0 ) break;
             char **delimited_str = str_split(tokens[i], ',');
             char *table_number = delimited_str[0];
             char *table_val = delimited_str[1];
-            if ((strcmp(table_number, "1") == 0 && strcmp(table_val, "1") == 0) ||
-                (strcmp(table_number, "1") == 0 && strcmp(table_val, "5") == 0)) {
+//            if ((strcmp(table_number, "1") == 0 && strcmp(table_val, "1") == 0) ||
+//                (strcmp(table_number, "1") == 0 && strcmp(table_val, "5") == 0)) {
+//                line++;
+//            }
+            if((strcmp(table_number, "1") == 0 && strcmp(table_val, "37") == 0)){
                 line++;
+                continue;
             }
             if (strcmp(table_number, "1") == 0 && strcmp(table_val, "24") == 0) {
                 was_start = true;
@@ -2848,7 +2855,7 @@ bool syntax_check(char _map[]) {
                     }
 
 
-                    if ((val_find_local_tmp || var_find_local_tmp) && !var_action) {
+                    if ((val_find_local_tmp || var_find_local_tmp) && !var_action) { // Var assign
 
                         if (strcmp(table_number, "1") == 0 && strcmp(table_val, "1") == 0) {
                             int valid = 0;
@@ -2874,11 +2881,21 @@ bool syntax_check(char _map[]) {
                         }
 
                     }
-
+                    if(else_find){
+                        if(strcmp(table_val, "1") != 0 && strcmp(table_number, "1") != 0){
+                            printf("Error. Unexpected token after 'else', ';' not find\n");
+                            break;
+                        }
+                    }
+                    if (strcmp(table_val, "36") == 0 && strcmp(table_number, "1") == 0 && is_if) {
+                        printf("FIND 'else'. IF continue.\n");
+                        else_find = true;
+                    }
                     if (strcmp(table_val, "30") == 0 && strcmp(table_number, "1") == 0 && is_if) {
                         printf("FIND 'END'. IF END.\n");
                         is_if = false;
                         then_find = false;
+                        else_find = false;
                     } else if (strcmp(table_val, "30") == 0 && strcmp(table_number, "1") == 0 && !is_if) {
                         printf("Error. If is not open\n");
                         not_error = false;
@@ -3341,11 +3358,11 @@ bool code_check_file_write(const char chars[1024]) {
         if (we_have_problem)
             break;
 
-        for (int del = 0; del <= 35; del++) {
+        for (int del = 0; del <= 37; del++) {
 
             for (int sub_del = 0; *(words[1][del] + sub_del); sub_del++) {
 
-                if (chars[i] == words[1][del][0]) {
+                if (chars[i] == words[1][del][0] && !is_del) {
                     for (int sub_del_chk = 0; *(words[1][del] + sub_del_chk); sub_del_chk++) {
                         if (chars[i + sub_del_chk] == words[1][del][sub_del_chk]) {
                             is_del = true;
