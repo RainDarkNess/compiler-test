@@ -1981,6 +1981,7 @@ bool code_work() {
     int while_relocation = 0;
     int code_align = 0;
     int temporary_code_size = 0;
+    int temporary_code_size_else = 0;
     char cycle_while_str[100];
     memset(cycle_while_str, '\0', sizeof(cycle_while_str));
 
@@ -2208,8 +2209,8 @@ bool code_work() {
 
             //                      end                             next
             if(!cycle_for) {
+                char hex[10];
                 if (strcmp(tokens, "1,30") == 0 || strcmp(tokens, "1,22") == 0) {
-                    char hex[10];
 
                     if(cycle_while){
                         code_align+=5;
@@ -2229,6 +2230,26 @@ bool code_work() {
 
                     write_bytes_to_file_position(TEMP_OBJ_FILE_NAME, temporary_code_size, hex, 4);
 
+                    code_align = (getFileSize(TEMP_OBJ_FILE_NAME) - temporary_code_size_else) - 4;
+                    memset(hex, '\0', 10);
+                    sprintf(hex,"%d", code_align);
+
+                    write_bytes_to_file_position(TEMP_OBJ_FILE_NAME, temporary_code_size_else, hex, 4);
+
+                }
+                if(strcmp(tokens, "1,36") == 0){
+                    int local_tmp_code_size_else = temporary_code_size_else;
+
+                    relocation_count = machine_templates("jmp", 0x00, index_vars, relocation_count);
+                    temporary_code_size_else = getFileSize(TEMP_OBJ_FILE_NAME);
+                    hex_local = 0x00000000;
+                    appendToFile(TEMP_OBJ_FILE_NAME, &hex_local, 4);
+
+                    code_align = (getFileSize(TEMP_OBJ_FILE_NAME) - local_tmp_code_size_else) - 4;
+                    memset(hex, '\0', 10);
+                    sprintf(hex,"%d", code_align);
+
+                    write_bytes_to_file_position(TEMP_OBJ_FILE_NAME, local_tmp_code_size_else, hex, 4);
                 }
             }
             if(has_oper){
@@ -2261,8 +2282,14 @@ bool code_work() {
                         }
                     }
 
-                    hex_local = 0x05;
+                    hex_local = 0x0A;
                     appendToFile(TEMP_OBJ_FILE_NAME, &hex_local, 1);
+
+                    relocation_count = machine_templates("jmp", 0x00, index_vars, relocation_count);
+                    temporary_code_size_else = getFileSize(TEMP_OBJ_FILE_NAME);
+                    hex_local = 0x00000000;
+                    appendToFile(TEMP_OBJ_FILE_NAME, &hex_local, 4);
+
                     relocation_count = machine_templates("jmp", 0x00, index_vars, relocation_count);
                     temporary_code_size = getFileSize(TEMP_OBJ_FILE_NAME);
                     hex_local = 0x00000000;
