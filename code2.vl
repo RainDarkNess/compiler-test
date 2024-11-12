@@ -1,8 +1,31 @@
+# Многострочный комментарий
+
+              , _ ,
+             ( o o )
+            /'` ' `'\
+            +'''''''+
+            +\\'''//+
+               """
+
+Конец многострочного комментария #
+
+# Начало программы #
 program var
+
+# Объявление переменных #
 fl:float;
 test:int;
 test_lb:bool;
+
+# Объявление нескольких переменных #
+test1,test2,test3:int;
+
 begin
+
+;test1 assign 1.23E-1
+;test2 assign 123E2
+;test3 assign 123E+2
+
 
 ;fl assign 1.1
 
@@ -12,13 +35,12 @@ begin
 
 ;if test_lb EQV ^ true then
 ;   displ test_lb
-
-;else
-;   displ test
 ;end
 
+;displ test3
+
 ;while test GRE 1 do
-    ;test assign test ! 10
+    ;test assign test - 10
     ;displ test
 ;next
 

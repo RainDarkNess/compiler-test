@@ -43,9 +43,9 @@ char words[4][1024][1024] = {{ // types
                                      {'('}, // 7
                                      {')'}, // 8
                                      {'-', '-'}, // 9
-                                     {"!"}, // 10 "-"
+                                     {"-"}, // 10 "-"
                                      {'+', '+'}, // 11
-                                     {"|"}, // 12 "+"
+                                     {"+"}, // 12 "+"
                                      {"*"}, // 13 "*"
                                      {"/"}, // 14 "/"
                                      {"then"}, // 15
@@ -286,12 +286,14 @@ char *number_validation(char *value) {
         }
         if (value[i] == '+' || value[i] == '-') {
             printf("Plus or Minus find...Exponential read.\n");
-            if (exponential_write_exp)
+            if (exponential_write_exp) {
                 exponential_write_plus = true;
-            else
-                printf("Error. In exp writing not found 'E'\n");
+            }else{
+                printf("Error. In exp writing not found 'E' %s\n", value);
+                return "false_verification";
+            }
         }
-        if (!exponential_write_plus && !exponential_write_exp) {
+        if (!exponential_write_plus || !exponential_write_exp) {
             if (!isdigit(value[i])) {
                 bool for_real_hex_check = false;
                 for (int j = 0; j < sizeof(latin_hex_alphabet) + 1; j++) {
@@ -649,8 +651,8 @@ char peek(Stack *s) {
 
 int precedence(char op) {
     switch (op) {
-        case '|':
-        case '!':
+        case '+':
+        case '-':
             return 1;
         case '*':
         case '/':
@@ -1875,7 +1877,7 @@ bool code_work() {
     // init variables
     int index_vars = 0;
     int max_hex_addr = 0;
-    printf("adress | value | name \n");
+
     for (int i = 0; i < vars_count; i++) {
             if (strcmp(def_vars[i].value, "true") == 0) {
 
@@ -2032,14 +2034,14 @@ bool code_work() {
 
                     bool has_condition = false;
                     for (int i = 0; *(postfix + i); ++i) {
-                        if(postfix[i] == '|' || postfix[i] == '!' || postfix[i] == '*' || postfix[i] == '/'){
+                        if(postfix[i] == '+' || postfix[i] == '-' || postfix[i] == '*' || postfix[i] == '/'){
                             has_condition = true;
                         }
                     }
                     if(has_condition){
                         relocation_count = machine_templates("mov_addr_rbx", "0", 0, relocation_count);
                         for (int j = 0; *(postfix + j); j++) {
-                            if (postfix[j] != '|' && postfix[j] != '!' && postfix[j] != '*' && postfix[j] != '/' && postfix[j] != ' ') {
+                            if (postfix[j] != '+' && postfix[j] != '-' && postfix[j] != '*' && postfix[j] != '/' && postfix[j] != ' ') {
 
                                 stack_asm[index_stack][v_index] = postfix[j];
                                 s_a[index_stack][v_index] = postfix[j];
@@ -2049,7 +2051,7 @@ bool code_work() {
                             } else {
                                 if(!was_val)
                                     index_stack--;
-                                if (postfix[j] == '|') {
+                                if (postfix[j] == '+') {
                                     if (strcmp(s_a[index_stack - 1], "") != 0 && strcmp(s_a[index_stack - 0], "") != 0) {
 
                                         relocation_count = machine_templates("mov_addr_rax", s_a[index_stack - 1], index_vars, relocation_count);
@@ -2089,7 +2091,7 @@ bool code_work() {
                                             relocation_count = machine_templates("mov_addr_rcx", s_a[index_stack - 0], index_vars, relocation_count);
                                             relocation_count = machine_templates("mul_rcx", 0x00, 0, relocation_count);
                                             relocation_count = machine_templates("mov_rax_rbx", 0x00, 0, relocation_count);
-                                            relocation_count = machine_templates("mov_addr_rax", 0x00, 0, relocation_count);
+                                            relocation_count = machine_templates("mov_addr_rax", "0", 0, relocation_count);
                                             memset(s_a[index_stack - 0], '\0', 1024);
                                         }
                                         memset(s_a, '\0', 100);
@@ -2126,7 +2128,7 @@ bool code_work() {
                                     memset(s_a[index_stack - 0], '\0', sizeof(s_a[index_stack - 0]));
                                     memset(s_a[index_stack - 1], '\0', sizeof(s_a[index_stack - 1]));
 
-                                } else if (postfix[j] == '!') {
+                                } else if (postfix[j] == '-') {
 
                                     if (strcmp(s_a[index_stack - 0], "") != 0 && strcmp(s_a[index_stack - 1], "") == 0) {
 
@@ -2842,7 +2844,7 @@ bool syntax_check(char _map[]) {
                 if (syntax_lvl == 3) { // ENTER AFTER BEGIN
 
                     if (is_if && !then_find) {
-                        printf("Error. Required token 'Then' in if not found\n");
+                        printf("Error. Required token 'Then' in if not found. Find %s\n", words[atoi(table_number)][atoi(table_val)]);
                         not_error = false;
                         break;
                     }
@@ -3350,6 +3352,7 @@ bool code_check_file_write(const char chars[1024]) {
     bool delimiter_detected = false;
     bool is_del = false;
     bool type_declaration = true;
+    bool exp_check = false;
     int tmp_del = 0;
 
     bool we_have_problem = false;
@@ -3493,8 +3496,25 @@ bool code_check_file_write(const char chars[1024]) {
                 }
             }
         }
+        if(chars[i] == 'E' || chars[i] == 'e'){
+            exp_check = true;
+        }
+
+        if(exp_check){
+            if((chars[i+1] == '-' || chars[i+1] == '+')){
+                tmp[j] = chars[i];
+                j++;
+                i++;
+            }
+            if((chars[i] == '\n')){
+                tmp[j] = '\0';
+            }
+            exp_check = false;
+        }
 
         tmp[j] = chars[i];
+
+
 
         if (tmp[0] == words[1][1][0] && !type_declaration) {
             tmp[0] = '\0';
