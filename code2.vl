@@ -16,7 +16,7 @@ program var
 fl:float;
 test:int;
 test_lb:bool;
-
+hex_t:int;
 # ќбъ€вление нескольких переменных #
 test1,test2,test3:int;
 
@@ -24,7 +24,9 @@ begin
 ;test1 assign 1.23E-1
 ;test2 assign 123E2
 ;test3 assign 123E+2
+;hex_t assign 1AABh
 
+;displ hex_t
 
 ;fl assign 1.1
 ;test assign 200

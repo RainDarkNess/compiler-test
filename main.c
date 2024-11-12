@@ -2,21 +2,13 @@
 #include <ctype.h>
 #include <string.h>
 #include <stdlib.h>
-#include <assert.h>
-#include <math.h>
 #include <stdint.h>
-#define FP2BIN_STRING_MAX 1077
 #define OBJ_FILE_NAME "myobj.o"
 #define TEMP_OBJ_FILE_NAME "tmp_myobj"
 #define TEMP_OBJ_FILE_NAME_END "..\\tmp_myobj_end"
 #define TEMP_OBJ_FILE_NAME_DATA "tmp_myobj_data"
 #define TEMP_OBJ_FILE_RELOCATIONS "tmp_myobj_relocations"
 #define TEMP_OBJ_FILE_SYMBOLS "tmp_myobj_symbols"
-
-#define MOV_VAR_RAX "mov_var_rax"
-#define MOV_VAR_RAX "mov_var_rax"
-
-
 
 struct var {
     char name[1024];
@@ -111,128 +103,6 @@ void file_write(const char *filepath, const char *data) {
     }
 
     fclose(fp);
-}
-
-
-char *hexToBinary(char hex[]) {
-    int len = strlen(hex);
-    char *binary = (char *) malloc((len * 4 + 1) * sizeof(char));
-    binary[0] = '\0';
-    for (int i = 0; i < len; i++) {
-        switch (hex[i]) {
-            case '0':
-                strcat(binary, "0000");
-                break;
-            case '1':
-                strcat(binary, "0001");
-                break;
-            case '2':
-                strcat(binary, "0010");
-                break;
-            case '3':
-                strcat(binary, "0011");
-                break;
-            case '4':
-                strcat(binary, "0100");
-                break;
-            case '5':
-                strcat(binary, "0101");
-                break;
-            case '6':
-                strcat(binary, "0110");
-                break;
-            case '7':
-                strcat(binary, "0111");
-                break;
-            case '8':
-                strcat(binary, "1000");
-                break;
-            case '9':
-                strcat(binary, "1001");
-                break;
-            case 'A':
-            case 'a':
-                strcat(binary, "1010");
-                break;
-            case 'B':
-            case 'b':
-                strcat(binary, "1011");
-                break;
-            case 'C':
-            case 'c':
-                strcat(binary, "1100");
-                break;
-            case 'D':
-            case 'd':
-                strcat(binary, "1101");
-                break;
-            case 'E':
-            case 'e':
-                strcat(binary, "1110");
-                break;
-            case 'F':
-            case 'f':
-                strcat(binary, "1111");
-                break;
-            default:
-                printf("Invalid hexadecimal digit\n");
-                return NULL;
-        }
-    }
-    return binary;
-}
-
-//char *decToBinary(char dec[]) {
-char* decToBinary(void *answer, size_t size) {
-
-        char* byte_ptr = (char *) malloc(size);
-        strcpy(byte_ptr, answer);
-        memset(answer, '\0', sizeof(size));
-//        for (size_t i = 0; i < size; i++) {
-            char temp[300];
-            memset(temp, '\0', sizeof(temp));
-            sprintf(temp + strlen(temp), "%02hhx", byte_ptr);
-            strcat(answer, temp);
-//        }
-        return answer;
-}
-
-char *octToBinary(char oct[]) {
-    int len = strlen(oct);
-    char *binary = (char *) malloc((len * 3 + 1) * sizeof(char));
-    binary[0] = '\0';
-    for (int i = 0; i < len; i++) {
-        switch (oct[i]) {
-            case '0':
-                strcat(binary, "000");
-                break;
-            case '1':
-                strcat(binary, "001");
-                break;
-            case '2':
-                strcat(binary, "010");
-                break;
-            case '3':
-                strcat(binary, "011");
-                break;
-            case '4':
-                strcat(binary, "100");
-                break;
-            case '5':
-                strcat(binary, "101");
-                break;
-            case '6':
-                strcat(binary, "110");
-                break;
-            case '7':
-                strcat(binary, "111");
-                break;
-            default:
-                printf("Invalid octal digit\n");
-                return NULL;
-        }
-    }
-    return binary;
 }
 
 double ieee754ToDouble(uint64_t bits) {
@@ -1386,20 +1256,8 @@ int machine_templates(char *op, char *value, int index_vars, int relocation_coun
         char adr[100];
 
         relocation_count = machine_templates("mov_addr_rax", "1", index_vars, relocation_count);
-//        relocation_count = machine_templates("mov_addr_rdx", "1", index_vars, relocation_count);
-
-//        hex = 0x48;
-//        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
-//        hex = 0x83;
-//        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
-//        hex = 0xFA;
-//        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
-//        hex = 0x01;
-//        appendToFile(TEMP_OBJ_FILE_NAME, &hex, 1);
 
         relocation_count = machine_templates("cmp_rax_rdx", 0x00, index_vars, relocation_count);
-
-//        relocation_count = machine_templates("cmp_addr_rdx", value, index_vars, relocation_count);
 
         relocation_count = machine_templates("je", 0x00, index_vars, relocation_count);
 
@@ -1815,8 +1673,6 @@ void add_symbol_table(SymbolEntry symbolEntry) {
 }
 
 
-
-
 void competition(char *path, uint32_t data_rem){
     long size = getFileSize(path);
 
@@ -1879,56 +1735,39 @@ bool code_work() {
     int max_hex_addr = 0;
 
     for (int i = 0; i < vars_count; i++) {
+
             if (strcmp(def_vars[i].value, "true") == 0) {
-
-                strcpy(hex_values_l[index_vars].name, def_vars[i].name);
-                hex_values_l[index_vars].addr = max_hex_addr;
                 hex_values_l[index_vars].value = 1;
-                max_hex_addr+=8;
-//                printf("%x | %s | %s\n", hex_values_l[index_vars].addr, hex_values_l[index_vars].value, hex_values_l[index_vars].name);
-                index_vars++;
             } else if (strcmp(def_vars[i].value, "false") == 0) {
-
-                strcpy(hex_values_l[index_vars].name, def_vars[i].name);
-                hex_values_l[index_vars].addr = max_hex_addr;
                 hex_values_l[index_vars].value = -2;
-                max_hex_addr+=8;
-//                printf("%x | %d | %s\n", hex_values_l[index_vars].addr, hex_values_l[index_vars].value, hex_values_l[index_vars].name);
-                index_vars++;
             } else {
                 if(strcmp(def_vars[i].value, "")!=0) {
                     sprintf(hexval, "%04x", atoi(def_vars[i].value));
 
                     char *endPtr;
                     long long decimalNumber = atoll(def_vars[i].value);
-
                     size_t numBytes = sizeof(decimalNumber);
 
                     char hex_tmp[1024];
                     memset(hex_tmp, '\0', 1024);
                     sprintf(hex_tmp, "%llu", decimalNumber);
-
-                    strcpy(hex_values_l[index_vars].name, def_vars[i].name);
-                    hex_values_l[index_vars].addr = max_hex_addr;
                     hex_values_l[index_vars].value = decimalNumber;
-                    max_hex_addr+=8;
-//                    printf("%x | %d | %s\n", hex_values_l[index_vars].addr, hex_values_l[index_vars].value, hex_values_l[index_vars].name);
-                    index_vars++;
                 }else{
-
-                    strcpy(hex_values_l[index_vars].name, def_vars[i].name);
-                    hex_values_l[index_vars].addr = max_hex_addr;
                     hex_values_l[index_vars].value = -2;
-                    max_hex_addr+=8;
-//                    printf("%x | %d | %s\n", hex_values_l[index_vars].addr, hex_values_l[index_vars].value, hex_values_l[index_vars].name);
-                    index_vars++;
                 }
             }
+//        char local_name[100];
+//        memset(local_name, '\0', 100);
+//        char l[1] = {def_vars[i].name[0]};
+//        sprintf(local_name, "%s%d", l, index_vars);
+//        strcpy(hex_values_l[index_vars].name, local_name);
+//        strcpy(def_vars[i].name, local_name);
+
+        strcpy(hex_values_l[index_vars].name, def_vars[i].name);
+        hex_values_l[index_vars].addr = max_hex_addr;
+        max_hex_addr+=8;
+        index_vars++;
     }
-    strcat(result, ".text\n"
-                   ".globl\tmain\n"
-                   ".extern printf\n");
-    strcat(result, ".data\n");
 
     // init variables
     for (int i = 0; i < vars_count; i++) {
@@ -1946,21 +1785,6 @@ bool code_work() {
         memset(template, '\0', sizeof(template));
 
     }
-
-    // Init main function program
-    strcat(result, ".LC0:\n"
-                   "\t.ascii \"%lld\\n\"\n"
-                   "\t.text\n"
-                   "\t.globl main\n"
-                   ".LC1:\n"
-                   "\t.ascii \"%f\\n\"\n"
-                   "\t.text\n"
-                   "\t.globl main\n"
-                   "main:\n"
-                   "\tpushq\t%rbp\n"
-                   "\tmovq\t%rsp, %rbp\n"
-                   "\tsubq\t$48, %rsp\n"
-                   "\tmov $0, %rax\n");
 
     // IMPORTANT COMMENTS
 
@@ -2466,27 +2290,6 @@ bool code_work() {
     appendToFile_little_en(TEMP_OBJ_FILE_NAME_DATA, format_data, 8);
     competition(TEMP_OBJ_FILE_NAME_DATA, 0x00);
 
-//    SymbolEntry symbolEntry_ep = {
-//            .s_name = "ep",
-//            .s_value = code_count_text,
-//            .s_section = 0x0001,
-//            .s_type = 0x0000,
-//            .s_storage_class = 0x06,
-//            .s_num_aux = 0x00
-//    };
-//    add_symbol_table(symbolEntry_ep);
-//
-//    SymbolEntry symbolEntry_dz = {
-//            .s_name = "dz",
-//            .s_value = code_count_text+13,
-//            .s_section = 0x0001,
-//            .s_type = 0x0000,
-//            .s_storage_class = 0x06,
-//            .s_num_aux = 0x00
-//    };
-
-//    add_symbol_table(symbolEntry_dz);
-
     SymbolEntry symbolEntry_text = {
             .s_name = ".text",
             .s_value = 0x00000000,
@@ -2564,15 +2367,6 @@ bool code_work() {
     };
 
     add_symbol_table(symbolEntry_main);
-
-//    SymbolEntry symbolEntry_print = {
-//            .s_name = "print",
-//            .s_value = 0x00000000,
-//            .s_section = 0x0001,
-//            .s_type = 0x0000,
-//            .s_storage_class = 0x02,
-//            .s_num_aux = 0x00
-//    };
 
     uint8_t machine_code[] = {
             0x70, 0x72, 0x69, 0x6E, 0x74, 0x66, 0x00, 0x00,
@@ -2676,28 +2470,8 @@ bool code_work() {
 
     competition(OBJ_FILE_NAME, 0x00);
 
-//hex_values_l[index_vars]
-    strcat(result,
-                   "\tmovl\t$0, %eax\n"
-                   "\taddq\t$48, %rsp\n"
-                   "\tpopq\t%rbp\n"
-                   "\n"
-                   "\tret");
-
-    strcat(result, "\nep:\n"
-                   "\tmov $0, %rax\n"
-                   "\taddq $48, %rsp\n"
-                   "\tpopq %rbp\n"
-                   "\tret\n"
-                   "dz:\n"
-                   "\tmov $1, %rbx \n"
-                   "\tjmp ep\n"
-                   "\tmov $0, %rax\n"
-                   "\tmov $0, %rbx\n");
-
     fclose(fopen("asm.s", "w"));
     file_write("asm.s", result);
-//    compile("asm.s");
     return true;
 }
 
@@ -3556,10 +3330,6 @@ bool code_check_file_write(const char chars[1024]) {
     if (!we_have_problem) {
         file_write("C:\\Users\\rain\\CLionProjects\\CTest\\1.txt", map);
         strcat(map_2, map);
-//        bool syntax_next = syntax_check(map);
-//        if (syntax_next) {
-//            code_work();
-//        }
     }
     return !we_have_problem;
 }
