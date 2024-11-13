@@ -1,13 +1,3 @@
-# Многострочный комментарий
-
-              , _ ,
-             ( o o )
-            /'` ' `'\
-            +'''''''+
-            +\\'''//+
-               """
-
-Конец многострочного комментария #
 
 # Начало программы #
 program var
@@ -17,45 +7,60 @@ fl:float;
 test:int;
 test_lb:bool;
 hex_t:int;
+
 # Объявление нескольких переменных #
 test1,test2,test3:int;
 
 begin
-;test1 assign 1.23E-1
-;test2 assign 123E2
-;test3 assign 123E+2
-;hex_t assign 1AABh
 
-;displ hex_t
+    test1 assign 1.23E-1;
+    test2 assign 123E2;
+    test3 assign 123E1;
+    hex_t assign 1AABh;
 
-;fl assign 1.1
-;test assign 200
+    displ hex_t;
 
-;test_lb assign false
+    fl assign 1.1;
 
-;if test_lb EQV true then
-;   displ test_lb
-;else
-;   displ test
-;end
+    test assign 200;
 
-;if test_lb EQV ^ true then
-;   displ test_lb
-;else
-;   displ test
-;end
+    test_lb assign false;
 
-;displ fl
+    if test_lb EQV true then
+       displ fl;
+    else
+        displ 123123;
+    end
 
-;displ test3
+    if test_lb EQV ^ true then
+       displ test_lb;
+    else
+       enter test;
+    end
 
-;while test GRE 1 do
-    ;test assign test - 10
-    ;displ test
-;next
+    displ fl;
 
-;for i assign 1 val 10 do
-    ;displ i
-;next
+    displ test3;
+
+    while test GRE 1 do
+        test assign test - 10;
+        displ test;
+    next
+#
+
+    for i assign 1 val 10 do
+        displ i;
+    next
+#
+    # Многострочный комментарий
+
+                  , _ ,
+                 ( o o )
+                /'` ' `'\
+                +'''''''+
+                +\\'''//+
+                   """
+
+    Конец многострочного комментария #
 
 end..

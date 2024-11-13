@@ -1,68 +1,62 @@
-# Многострочный комментарий
-
-              , _ ,
-             ( o o )
-            /'` ' `'\
-            |'''''''|
-            |\\'''//|
-               """
-
-Конец многострочного комментария #
 
 # Начало программы #
 program var
 
 # Объявление переменных #
-a:int;
-self:float;
-z:int;
-testBool:bool;
-y:float;
-
+fl:float;
+test:int;
+test_lb:bool;
+hex_t:int;
 # Объявление нескольких переменных #
-test,test1,test2:int;
+test1,test2,test3:int;
 
-# Начало работы программы #
 begin
-
-# Присвоение int`овой величины #
-;z assign 1
-
-# Приравнивание к переменной float`овой величины #
-;self assign 1.5
-;y assign 1.5566999
-
-# Использование научной записи #
-;test assign 1.23E-1
-;test1 assign 1.23E1
+;test1 assign 1.23E-1
 ;test2 assign 123E2
+;test3 assign 123E+2
+;hex_t assign 1AABh
 
-# 16тиричная запись #
-;a assign 1ABFFFh
+;displ hex_t
 
-# Логическая запись #
-;testBool assign false
+;fl assign 1.1
+;test assign 200
 
-# Перезаписывание значения переменной засчет другой #
-;test assign test2
+;test_lb assign false
 
-# Условный оператор #
-if y GRT a then
-   ;y assign 10.2 | y | a
-   ;y assign z / testBool | 10
-   ;z assign 2 * 1 | 1 - 2
+;if test_lb EQV true then
+;   displ test_lb
+;else
+;   displ test
 ;end
 
-;y assign 10.5
+;if test_lb EQV ^ true then
+;   displ test_lb
+;else
+;   displ test
+;end
 
-# Цикл с известной длиной #
-;for i assign 1 val 10 do
-   ;y assign 10 | z
+;displ fl
+
+;displ test3
+
+;while test GRE 1 do
+    ;test assign test - 10
+    ;displ test
 ;next
-# Цикл с неизвестной длиной #
-while z GRT z do
-   ;z assign z - 1
-next
-;displ y | 2, z - 1, z | z
-;displ y
+
+;for i assign 1 val 10 do
+    ;displ i
+;next
+
+# Многострочный комментарий
+
+              , _ ,
+             ( o o )
+            /'` ' `'\
+            +'''''''+
+            +\\'''//+
+               """
+
+Конец многострочного комментария #
+
 end..
