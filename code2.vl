@@ -6,6 +6,7 @@ program var
 fl:float;
 test:int;
 test_lb:bool;
+test_nl:bool;
 hex_t:int;
 
 # ќбъ€вление нескольких переменных #
@@ -13,8 +14,8 @@ test1,test2,test3:int;
 
 begin
 
-    test1 assign 1.23E-1;
-    test2 assign 123E2;
+    test1 assign 11;
+    test2 assign 1020;
     test3 assign 123E1;
     hex_t assign 1AABh;
 
@@ -46,12 +47,10 @@ begin
         test assign test - 10;
         displ test;
     next
-#
 
-    for i assign 1 val 10 do
+    for i assign fl val 10 do
         displ i;
     next
-#
     # ћногострочный комментарий
 
                   , _ ,
