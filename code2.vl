@@ -33,7 +33,7 @@ begin
         displ 123123;
     end
 
-    if test_lb EQV ^ true then
+    if test_lb GRE 1 then
        displ test_lb;
     else
        enter test;
@@ -43,7 +43,12 @@ begin
 
     displ test3;
 
-    while test GRE 1 do
+    while test do
+        test assign test - 10;
+        displ test;
+    next
+
+    while test GRE true do
         test assign test - 10;
         displ test;
     next

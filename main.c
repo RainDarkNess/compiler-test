@@ -2996,6 +2996,7 @@ bool syntax_check(char _map[]) {
                                     if(debug)printf("VAR IN IF %s FIND. VALUE IS %s\n", def_vars[j].name, def_vars[j].value);
                                     var_find_if = true;
                                     var_if_number = j;
+                                    has_condition_if = true;
                                 } else {
                                     fprintf(stderr, "Error. Value of var: %s is undefined\n", def_vars[j].name);
                                     not_error = false;
@@ -3014,6 +3015,7 @@ bool syntax_check(char _map[]) {
                     } else if (strcmp(table_number, "2") == 0) { // Var value check
                         var_find_if = true;
                         if(debug)printf("_FIND VALUE IS %s\n", words[atoi(table_number)][atoi(table_val)]);
+                        has_condition_if = true;
                     }
                     if(strcmp(table_number, "1") == 0 && strcmp(table_val, "35")==0){
                         var_find_if = true;
@@ -3064,6 +3066,7 @@ bool syntax_check(char _map[]) {
                                 if (!def_vars[j].isNull) {
                                     if(debug)printf("VAR IN CYCLE %s FIND. VALUE IS %s\n", def_vars[j].name, def_vars[j].value);
                                     var_find_cycle = true;
+                                    has_condition_cycle = true;
                                 } else {
                                     fprintf(stderr, "Error. Value of var: %s is undefined\n", def_vars[j].name);
                                     not_error = false;
@@ -3103,6 +3106,12 @@ bool syntax_check(char _map[]) {
                         continue;
                     }  else if (strcmp(table_val, "29") == 0 && is_while && (has_value_cycle || var_find_cycle)) {
                         if(debug)printf("FIND 'GRE'\n");
+                        has_condition_cycle = true;
+                        has_value_cycle = false;
+                        var_find_cycle = false;
+                        continue;
+                    }  else if (strcmp(table_val, "27") == 0 && is_while && (has_value_cycle || var_find_cycle)) {
+                        if(debug)printf("FIND 'EQV'\n");
                         has_condition_cycle = true;
                         has_value_cycle = false;
                         var_find_cycle = false;
