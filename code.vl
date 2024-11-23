@@ -13,6 +13,9 @@ test1,test2,test3:int;
 begin
 ;test1 assign 1.23E-1
 ;test2 assign 123E2
+;test2 assign 123E2
+;test2 assign 123E2
+;test2 assign 123E2
 ;test3 assign 123E+2
 ;hex_t assign 1AABh
 
