@@ -9,7 +9,10 @@ Compile using ide or gcc main.c, then run it as follows
 .\example.exe .\\path_to_modal_language 1 1 1
 ```
 
-modal language example:
+The first parameter is the debug mode
+The second parameter is the output of all variables written in human-readable form, the third is the output of all delimiters and system words.
+
+Modal language example:
 ```js
 # comment #
 program var
@@ -82,9 +85,6 @@ comment #
 end..
 ```
 
-The first parameter is the debug mode
-The second parameter is the output of all variables written in human-readable form, the third is the output of all delimiters and system words:
-
 ## Compile
 ```cmd
 gcc .\main.c.obj -o file  
@@ -99,4 +99,4 @@ win 64, ~500kb ram.
 
 ## project team
 im
-- [rain (git)](https://github.com/RainDarkNess/compiler-test) — dev
+- [rain (git)](https://github.com/RainDarkNess/compiler-test) â€” dev
